@@ -1,13 +1,5 @@
 {
-  "routes": [
-    {
-      "src": "/api/supabase/(.*)",
-      "dest": "https://suubkuumouudvgcowqvl.supabase.co/$1",
-      "headers": {
-        "host": "suubkuumouudvgcowqvl.supabase.co"
-      }
-    },
-    { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/index.html" }
+  "rewrites": [
+    { "source": "/api/supabase/(.*)", "destination": "/api/supabase" }
   ]
 }
