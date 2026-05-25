@@ -1,10 +1,13 @@
 package com.listeningtrainer.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.listeningtrainer.dto.ProgressHistoryResponse;
 import com.listeningtrainer.dto.ProgressRequest;
 import com.listeningtrainer.dto.ProgressResponse;
 import com.listeningtrainer.entity.UserProgress;
+import com.listeningtrainer.entity.UserProgressSummary;
 import com.listeningtrainer.mapper.UserProgressMapper;
+import com.listeningtrainer.mapper.UserProgressSummaryMapper;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -14,53 +17,87 @@ import java.util.List;
 public class ProgressService {
 
     private final UserProgressMapper progressMapper;
+    private final UserProgressSummaryMapper summaryMapper;
 
-    public ProgressService(UserProgressMapper progressMapper) {
+    public ProgressService(UserProgressMapper progressMapper, UserProgressSummaryMapper summaryMapper) {
         this.progressMapper = progressMapper;
+        this.summaryMapper = summaryMapper;
     }
 
     public List<ProgressResponse> getProgress(Long userId) {
+        LambdaQueryWrapper<UserProgressSummary> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(UserProgressSummary::getUserId, userId);
+        return summaryMapper.selectList(wrapper).stream()
+                .map(s -> new ProgressResponse(
+                        s.getLessonId(),
+                        s.getLatestScore(),
+                        s.getTotalAttempts(),
+                        s.getBestScore(),
+                        s.getLastDate()))
+                .toList();
+    }
+
+    public List<ProgressHistoryResponse> getHistory(Long userId) {
         LambdaQueryWrapper<UserProgress> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(UserProgress::getUserId, userId);
+        wrapper.eq(UserProgress::getUserId, userId)
+               .orderByDesc(UserProgress::getDate);
         return progressMapper.selectList(wrapper).stream()
-                .map(p -> new ProgressResponse(p.getLessonId(), p.getScore(), p.getAttempts(), p.getBestScore(), p.getDate()))
+                .map(p -> new ProgressHistoryResponse(
+                        p.getId(),
+                        p.getLessonId(),
+                        p.getScore(),
+                        p.getDate()))
+                .toList();
+    }
+
+    public List<ProgressHistoryResponse> getLessonHistory(Long userId, String lessonId) {
+        LambdaQueryWrapper<UserProgress> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(UserProgress::getUserId, userId)
+               .eq(UserProgress::getLessonId, lessonId)
+               .orderByDesc(UserProgress::getDate);
+        return progressMapper.selectList(wrapper).stream()
+                .map(p -> new ProgressHistoryResponse(
+                        p.getId(),
+                        p.getLessonId(),
+                        p.getScore(),
+                        p.getDate()))
                 .toList();
     }
 
     public ProgressResponse saveProgress(Long userId, ProgressRequest request) {
-        LambdaQueryWrapper<UserProgress> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(UserProgress::getUserId, userId)
-               .eq(UserProgress::getLessonId, request.getLessonId());
-        UserProgress existing = progressMapper.selectOne(wrapper);
+        // 1. Insert detail row
+        UserProgress detail = new UserProgress(userId, request.getLessonId(), request.getScore(), LocalDate.now());
+        progressMapper.insert(detail);
 
-        int newAttempts = (existing != null ? existing.getAttempts() : 0) + 1;
-        int newBestScore = Math.max(request.getScore(), existing != null ? existing.getBestScore() : 0);
+        // 2. Upsert summary
+        LambdaQueryWrapper<UserProgressSummary> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(UserProgressSummary::getUserId, userId)
+               .eq(UserProgressSummary::getLessonId, request.getLessonId());
+        UserProgressSummary summary = summaryMapper.selectOne(wrapper);
 
-        UserProgress progress;
-        if (existing != null) {
-            progress = existing;
+        if (summary == null) {
+            summary = new UserProgressSummary();
+            summary.setUserId(userId);
+            summary.setLessonId(request.getLessonId());
+            summary.setLatestScore(request.getScore());
+            summary.setBestScore(request.getScore());
+            summary.setTotalAttempts(1);
+            summary.setLastDate(LocalDate.now());
+            summaryMapper.insert(summary);
         } else {
-            progress = new UserProgress();
-            progress.setUserId(userId);
-            progress.setLessonId(request.getLessonId());
-        }
-        progress.setScore(request.getScore());
-        progress.setAttempts(newAttempts);
-        progress.setBestScore(newBestScore);
-        progress.setDate(LocalDate.now());
-
-        if (existing != null) {
-            progressMapper.updateById(progress);
-        } else {
-            progressMapper.insert(progress);
+            summary.setLatestScore(request.getScore());
+            summary.setBestScore(Math.max(summary.getBestScore(), request.getScore()));
+            summary.setTotalAttempts(summary.getTotalAttempts() + 1);
+            summary.setLastDate(LocalDate.now());
+            summaryMapper.updateById(summary);
         }
 
         return new ProgressResponse(
-                progress.getLessonId(),
-                progress.getScore(),
-                progress.getAttempts(),
-                progress.getBestScore(),
-                progress.getDate()
+                summary.getLessonId(),
+                summary.getLatestScore(),
+                summary.getTotalAttempts(),
+                summary.getBestScore(),
+                summary.getLastDate()
         );
     }
 }

@@ -6,7 +6,8 @@ export interface Lesson {
   title: string;
   sentence: string;
   hint: string;
-  audioPath: string;
+  audioPath?: string;
+  voice?: 'male' | 'female';
 }
 
 export interface LessonProgress {
@@ -20,7 +21,7 @@ export interface ProgressMap {
   [lessonId: string]: LessonProgress;
 }
 
-export type View = 'home' | 'lessons' | 'player';
+export type View = 'home' | 'lessons' | 'player' | 'custom' | 'history' | 'lessonHistory';
 
 export interface AppState {
   view: View;

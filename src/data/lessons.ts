@@ -126,6 +126,29 @@ export const lessons: Lesson[] = [
     hint: 'Environmental science lecture. Discussing climate change impacts on weather and farming.',
     audioPath: '/audio/academic-05.mp3',
   },
+
+  // ===== Tier 3: Academic — AI & NLP (TTS generated) =====
+  {
+    id: 'academic-06',
+    difficulty: 'academic',
+    title: 'AI: Neural Networks',
+    sentence: 'Deep neural networks consist of multiple hidden layers that enable the model to learn hierarchical representations of complex data.',
+    hint: 'Machine learning lecture. Introduction to the architecture of deep neural networks.',
+  },
+  {
+    id: 'academic-07',
+    difficulty: 'academic',
+    title: 'NLP: Transformer Architecture',
+    sentence: 'The transformer model relies entirely on self-attention mechanisms to compute representations of its input and output without using recurrent connections.',
+    hint: 'Natural language processing lecture. Explaining the core innovation behind modern large language models.',
+  },
+  {
+    id: 'academic-08',
+    difficulty: 'academic',
+    title: 'AI: Gradient Descent',
+    sentence: 'Gradient descent is an iterative optimisation algorithm that minimises the loss function by adjusting model parameters in the direction of the negative gradient.',
+    hint: 'Machine learning fundamentals. Discussing how neural networks learn from data through optimisation.',
+  },
 ];
 
 export function getLessonsByDifficulty(difficulty: string): Lesson[] {

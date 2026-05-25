@@ -9,8 +9,17 @@ CREATE TABLE IF NOT EXISTS user_progress (
     user_id BIGINT NOT NULL,
     lesson_id VARCHAR(50) NOT NULL,
     score INT NOT NULL DEFAULT 0,
-    attempts INT NOT NULL DEFAULT 1,
-    best_score INT NOT NULL DEFAULT 0,
     date DATE NOT NULL,
+    INDEX idx_user_id (user_id)
+);
+
+CREATE TABLE IF NOT EXISTS user_progress_summary (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    lesson_id VARCHAR(50) NOT NULL,
+    latest_score INT NOT NULL DEFAULT 0,
+    best_score INT NOT NULL DEFAULT 0,
+    total_attempts INT NOT NULL DEFAULT 1,
+    last_date DATE NOT NULL,
     UNIQUE KEY uk_user_lesson (user_id, lesson_id)
 );

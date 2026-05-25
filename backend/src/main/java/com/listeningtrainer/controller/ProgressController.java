@@ -23,6 +23,17 @@ public class ProgressController {
         return ResponseEntity.ok(progressService.getProgress(user.getId()));
     }
 
+    @GetMapping("/history")
+    public ResponseEntity<?> getHistory(@AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(progressService.getHistory(user.getId()));
+    }
+
+    @GetMapping("/{lessonId}/history")
+    public ResponseEntity<?> getLessonHistory(@AuthenticationPrincipal User user,
+                                              @PathVariable String lessonId) {
+        return ResponseEntity.ok(progressService.getLessonHistory(user.getId(), lessonId));
+    }
+
     @PostMapping
     public ResponseEntity<?> saveProgress(@AuthenticationPrincipal User user,
                                           @Valid @RequestBody ProgressRequest request) {

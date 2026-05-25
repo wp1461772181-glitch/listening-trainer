@@ -15,20 +15,14 @@ public class UserProgress {
 
     private int score;
 
-    private int attempts;
-
-    private int bestScore;
-
     private LocalDate date;
 
     public UserProgress() {}
 
-    public UserProgress(Long userId, String lessonId, int score, int attempts, int bestScore, LocalDate date) {
+    public UserProgress(Long userId, String lessonId, int score, LocalDate date) {
         this.userId = userId;
         this.lessonId = lessonId;
         this.score = score;
-        this.attempts = attempts;
-        this.bestScore = bestScore;
         this.date = date;
     }
 
@@ -43,12 +37,6 @@ public class UserProgress {
 
     public int getScore() { return score; }
     public void setScore(int score) { this.score = score; }
-
-    public int getAttempts() { return attempts; }
-    public void setAttempts(int attempts) { this.attempts = attempts; }
-
-    public int getBestScore() { return bestScore; }
-    public void setBestScore(int bestScore) { this.bestScore = bestScore; }
 
     public LocalDate getDate() { return date; }
     public void setDate(LocalDate date) { this.date = date; }

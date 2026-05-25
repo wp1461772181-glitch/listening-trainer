@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080';
 
 let token: string | null = localStorage.getItem('auth_token');
 
@@ -87,6 +87,22 @@ export async function apiSaveProgress(lessonId: string, score: number): Promise<
   });
 }
 
+// Progress History API
+export interface HistoryRow {
+  id: number;
+  lessonId: string;
+  score: number;
+  date: string;
+}
+
+export async function apiGetHistory(): Promise<HistoryRow[]> {
+  return request<HistoryRow[]>('/api/progress/history');
+}
+
+export async function apiGetLessonHistory(lessonId: string): Promise<HistoryRow[]> {
+  return request<HistoryRow[]>(`/api/progress/${encodeURIComponent(lessonId)}/history`);
+}
+
 // Lessons API
 export interface LessonData {
   id: string;
@@ -99,4 +115,37 @@ export interface LessonData {
 
 export async function apiGetLessons(): Promise<LessonData[]> {
   return request<LessonData[]>('/api/lessons');
+}
+
+// Custom Lessons API
+export interface CustomLessonData {
+  lessonKey: string;
+  title: string;
+  difficulty: string;
+  hint: string;
+  sentence: string;
+  voice: string;
+}
+
+export async function apiGetCustomLessons(): Promise<CustomLessonData[]> {
+  return request<CustomLessonData[]>('/api/custom-lessons');
+}
+
+export async function apiCreateCustomLesson(data: {
+  title: string;
+  difficulty: string;
+  hint?: string;
+  sentence: string;
+  voice?: string;
+}): Promise<CustomLessonData> {
+  return request<CustomLessonData>('/api/custom-lessons', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiDeleteCustomLesson(lessonKey: string): Promise<void> {
+  return request<void>(`/api/custom-lessons/${lessonKey}`, {
+    method: 'DELETE',
+  });
 }
