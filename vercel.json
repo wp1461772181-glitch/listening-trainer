@@ -1,19 +1,13 @@
 {
-  "builds": [
+  "routes": [
     {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
+      "src": "/api/supabase/(.*)",
+      "dest": "https://suubkuumouudvgcowqvl.supabase.co/$1",
+      "headers": {
+        "host": "suubkuumouudvgcowqvl.supabase.co"
       }
     },
-    {
-      "src": "api/supabase.js",
-      "use": "@vercel/edge"
-    }
-  ],
-  "rewrites": [
-    { "source": "/api/supabase/(.*)", "destination": "/api/supabase" },
-    { "source": "/(.*)", "destination": "/" }
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
