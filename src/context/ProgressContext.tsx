@@ -1,20 +1,7 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import type { ProgressMap } from '../types';
-
-const STORAGE_KEY = 'listening-trainer-progress';
-
-function loadProgress(): ProgressMap {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-}
-
-function saveProgress(progress: ProgressMap) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
-}
+import { supabase } from '../lib/supabase';
+import { useAuth } from './AuthContext';
 
 interface ProgressContextType {
   progress: ProgressMap;
@@ -26,26 +13,68 @@ interface ProgressContextType {
 const ProgressContext = createContext<ProgressContextType | null>(null);
 
 export function ProgressProvider({ children }: { children: ReactNode }) {
-  const [progress, setProgress] = useState<ProgressMap>(loadProgress);
+  const { user } = useAuth();
+  const [progress, setProgress] = useState<ProgressMap>({});
+
+  useEffect(() => {
+    if (!user) {
+      setProgress({});
+      return;
+    }
+
+    supabase
+      .from('user_progress')
+      .select('lesson_id, score, attempts, best_score, date')
+      .eq('user_id', user.id)
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('Failed to load progress:', error.message);
+          return;
+        }
+        const map: ProgressMap = {};
+        for (const row of data ?? []) {
+          map[row.lesson_id] = {
+            score: row.score,
+            date: row.date,
+            attempts: row.attempts,
+            bestScore: row.best_score,
+          };
+        }
+        setProgress(map);
+      });
+  }, [user]);
 
   const saveLesson = useCallback(
     (lessonId: string, score: number) => {
+      if (!user) return;
+
       setProgress((prev) => {
         const existing = prev[lessonId];
-        const next: ProgressMap = {
-          ...prev,
-          [lessonId]: {
-            score,
-            date: new Date().toISOString().split('T')[0],
-            attempts: (existing?.attempts ?? 0) + 1,
-            bestScore: Math.max(score, existing?.bestScore ?? 0),
-          },
+        const upserted = {
+          score,
+          date: new Date().toISOString().split('T')[0],
+          attempts: (existing?.attempts ?? 0) + 1,
+          bestScore: Math.max(score, existing?.bestScore ?? 0),
         };
-        saveProgress(next);
-        return next;
+
+        supabase
+          .from('user_progress')
+          .upsert({
+            user_id: user.id,
+            lesson_id: lessonId,
+            score,
+            attempts: upserted.attempts,
+            best_score: upserted.bestScore,
+            date: upserted.date,
+          })
+          .then(({ error }) => {
+            if (error) console.error('Failed to save progress:', error.message);
+          });
+
+        return { ...prev, [lessonId]: upserted };
       });
     },
-    [],
+    [user],
   );
 
   const getBestScore = useCallback(

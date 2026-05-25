@@ -1,13 +1,47 @@
 import { useState, useCallback } from 'react';
 import type { Difficulty, Lesson, View } from './types';
 import { getLessonsByDifficulty } from './data/lessons';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProgressProvider, useProgress } from './context/ProgressContext';
 import Layout from './components/Layout';
 import DifficultyCard from './components/DifficultyCard';
 import LessonList from './components/LessonList';
 import Player from './components/Player';
+import AuthForm from './components/AuthForm';
 
 function AppContent() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="text-slate-400">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-200">
+        <div className="mx-auto max-w-4xl px-4 py-6">
+          <div className="mb-8 text-center">
+            <h1 className="mb-3 text-4xl font-bold text-white tracking-tight">
+              Academic Listening
+            </h1>
+            <p className="text-slate-400">
+              Dictation training for Monash University preparation
+            </p>
+          </div>
+          <AuthForm />
+        </div>
+      </div>
+    );
+  }
+
+  return <AppRoutes />;
+}
+
+function AppRoutes() {
   const [view, setView] = useState<View>('home');
   const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
@@ -142,8 +176,10 @@ function AppContent() {
 
 export default function App() {
   return (
-    <ProgressProvider>
-      <AppContent />
-    </ProgressProvider>
+    <AuthProvider>
+      <ProgressProvider>
+        <AppContent />
+      </ProgressProvider>
+    </AuthProvider>
   );
 }
