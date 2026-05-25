@@ -1,6 +1,14 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
-import type { User, AuthError } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
+import { apiRegister, apiLogin, apiGetMe, setToken, getToken } from '../lib/api';
+
+interface User {
+  id: number;
+  email: string;
+}
+
+interface AuthError {
+  message: string;
+}
 
 interface AuthContextType {
   user: User | null;
@@ -17,31 +25,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
+    const savedToken = getToken();
+    if (!savedToken) {
       setLoading(false);
-    });
+      return;
+    }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    apiGetMe()
+      .then(({ email }) => {
+        setUser({ id: 0, email }); // id not needed on frontend after auth
+      })
+      .catch(() => {
+        setToken(null);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const signUp = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({ email, password });
-    return { error };
+    try {
+      const res = await apiRegister(email, password);
+      setUser({ id: 0, email: res.email });
+      return { error: null };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Registration failed';
+      return { error: { message } };
+    }
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error };
+    try {
+      const res = await apiLogin(email, password);
+      setUser({ id: 0, email: res.email });
+      return { error: null };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Login failed';
+      return { error: { message } };
+    }
   }, []);
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    setToken(null);
     setUser(null);
   }, []);
 

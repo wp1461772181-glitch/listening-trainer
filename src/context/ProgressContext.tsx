@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import type { ProgressMap } from '../types';
-import { supabase } from '../lib/supabase';
+import { apiGetProgress, apiSaveProgress } from '../lib/api';
 import { useAuth } from './AuthContext';
 
 interface ProgressContextType {
@@ -22,25 +22,21 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    supabase
-      .from('user_progress')
-      .select('lesson_id, score, attempts, best_score, date')
-      .eq('user_id', user.id)
-      .then(({ data, error }) => {
-        if (error) {
-          console.error('Failed to load progress:', error.message);
-          return;
-        }
+    apiGetProgress()
+      .then((data) => {
         const map: ProgressMap = {};
-        for (const row of data ?? []) {
-          map[row.lesson_id] = {
+        for (const row of data) {
+          map[row.lessonId] = {
             score: row.score,
             date: row.date,
             attempts: row.attempts,
-            bestScore: row.best_score,
+            bestScore: row.bestScore,
           };
         }
         setProgress(map);
+      })
+      .catch((err) => {
+        console.error('Failed to load progress:', err.message);
       });
   }, [user]);
 
@@ -57,19 +53,9 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
           bestScore: Math.max(score, existing?.bestScore ?? 0),
         };
 
-        supabase
-          .from('user_progress')
-          .upsert({
-            user_id: user.id,
-            lesson_id: lessonId,
-            score,
-            attempts: upserted.attempts,
-            best_score: upserted.bestScore,
-            date: upserted.date,
-          })
-          .then(({ error }) => {
-            if (error) console.error('Failed to save progress:', error.message);
-          });
+        apiSaveProgress(lessonId, score).catch((err) => {
+          console.error('Failed to save progress:', err.message);
+        });
 
         return { ...prev, [lessonId]: upserted };
       });
