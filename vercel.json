@@ -1,9 +1,19 @@
 {
-  "rewrites": [
+  "builds": [
     {
-      "source": "/api/supabase/:path*",
-      "destination": "https://suubkuumouudvgcowqvl.supabase.co/:path*"
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
     },
+    {
+      "src": "api/supabase.js",
+      "use": "@vercel/edge"
+    }
+  ],
+  "rewrites": [
+    { "source": "/api/supabase/(.*)", "destination": "/api/supabase" },
     { "source": "/(.*)", "destination": "/" }
   ]
 }
