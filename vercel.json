@@ -1,10 +1,9 @@
 {
-  "functions": {
-    "api/supabase.js": {
-      "runtime": "@vercel/node@3"
-    }
-  },
   "rewrites": [
-    { "source": "/api/supabase/(.*)", "destination": "/api/supabase" }
+    {
+      "source": "/api/supabase/:path*",
+      "destination": "https://suubkuumouudvgcowqvl.supabase.co/:path*"
+    },
+    { "source": "/(.*)", "destination": "/" }
   ]
 }
