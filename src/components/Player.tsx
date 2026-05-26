@@ -49,7 +49,7 @@ export default function Player({ lesson, onBack, onSelectLesson }: PlayerProps) 
   const [audioReady, setAudioReady] = useState(false);
 
   const keywordList = extractKeywords(lesson.sentence);
-  const audioSrc = lesson.audioPath || `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q=${encodeURIComponent(lesson.sentence)}`;
+  const audioSrc = lesson.audioPath || `/api/tts?text=${encodeURIComponent(lesson.sentence)}`;
 
   useEffect(() => {
     setStage('prep');
