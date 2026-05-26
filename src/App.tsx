@@ -153,7 +153,11 @@ function AppRoutes() {
   if (view === 'custom') {
     return (
       <Layout onHome={handleGoHome} showBack={false}>
-        <CustomLessonForm onBack={handleGoHome} onStart={handleStartCustom} />
+        <CustomLessonForm
+          onBack={handleGoHome}
+          onStart={handleStartCustom}
+          onSaved={() => { handleGoHome(); refreshCustomLessons(); }}
+        />
       </Layout>
     );
   }

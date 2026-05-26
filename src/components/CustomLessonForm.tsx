@@ -1,14 +1,15 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import type { Difficulty, Lesson } from '../types';
-import { checkGrammar, highlightErrors, type GrammarMatch } from '../utils/grammar';
+import { checkGrammar, highlightErrors, checkSpacing, normalizeText, type GrammarMatch } from '../utils/grammar';
 import { saveCustomLesson } from '../utils/customLessons';
 
 interface Props {
   onBack: () => void;
   onStart: (lesson: Lesson) => void;
+  onSaved?: () => void;
 }
 
-export default function CustomLessonForm({ onBack, onStart }: Props) {
+export default function CustomLessonForm({ onBack, onStart, onSaved }: Props) {
   const [title, setTitle] = useState('');
   const [difficulty, setDifficulty] = useState<Difficulty>('academic');
   const [hint, setHint] = useState('');
@@ -17,7 +18,10 @@ export default function CustomLessonForm({ onBack, onStart }: Props) {
   const [matches, setMatches] = useState<GrammarMatch[]>([]);
   const [checking, setChecking] = useState(false);
   const [checked, setChecked] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [spacingResult, setSpacingResult] = useState<ReturnType<typeof checkSpacing> | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const buildLesson = useCallback((): Lesson => ({
     id: `custom-${Date.now()}`,
@@ -38,13 +42,19 @@ export default function CustomLessonForm({ onBack, onStart }: Props) {
   }, [sentence]);
 
   const handleSave = useCallback(async () => {
+    setSaving(true);
     const lesson = buildLesson();
     const result = await saveCustomLesson(lesson);
     if (result) {
       setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      if (onSaved) {
+        onSaved();
+      } else {
+        setTimeout(() => setSaved(false), 2000);
+      }
     }
-  }, [buildLesson]);
+    setSaving(false);
+  }, [buildLesson, onSaved]);
 
   const handleSaveAndStart = useCallback(async () => {
     const lesson = buildLesson();
@@ -146,12 +156,52 @@ export default function CustomLessonForm({ onBack, onStart }: Props) {
               setSentence(e.target.value);
               setChecked(false);
               setMatches([]);
+              if (debounceRef.current) clearTimeout(debounceRef.current);
+              debounceRef.current = setTimeout(() => {
+                const result = checkSpacing(e.target.value);
+                setSpacingResult(result.hasIssues ? result : null);
+              }, 400);
             }}
             placeholder="Enter the full sentence or paragraph you want to practice with..."
             rows={4}
             className="w-full resize-none rounded-xl border border-aurora-border bg-aurora-surface/60 p-4 text-sm leading-relaxed text-aurora-text placeholder:text-aurora-muted/50 focus:border-aurora-violet/50 focus:outline-none focus:ring-2 focus:ring-aurora-violet/10 transition-all"
           />
         </div>
+
+        {/* Spacing fix preview */}
+        {spacingResult && (
+          <div className="rounded-xl border border-aurora-cyan/30 bg-aurora-cyan/5 p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <svg className="h-4 w-4 text-aurora-cyan shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="text-sm font-semibold text-aurora-cyan">Format issues detected</span>
+            </div>
+            <ul className="space-y-1">
+              {spacingResult.issues.map((issue, i) => (
+                <li key={i} className="flex items-center gap-1.5 text-xs text-aurora-muted">
+                  <span className="h-1 w-1 rounded-full bg-aurora-cyan/60 shrink-0" />
+                  {issue}
+                </li>
+              ))}
+            </ul>
+            <div className="rounded-lg bg-aurora-surface/80 p-3 text-sm leading-relaxed text-aurora-text border border-aurora-border">
+              <div className="mb-1 text-xs font-medium text-aurora-muted">Fixed version:</div>
+              {spacingResult.fixed}
+            </div>
+            <button
+              onClick={() => {
+                setSentence(spacingResult.fixed);
+                setSpacingResult(null);
+                setChecked(false);
+                setMatches([]);
+              }}
+              className="rounded-lg bg-aurora-cyan/20 px-4 py-2 text-sm font-medium text-aurora-cyan hover:bg-aurora-cyan/30 transition-all duration-200"
+            >
+              Apply Fix
+            </button>
+          </div>
+        )}
 
         {/* Buttons */}
         <div className="flex gap-3">
@@ -167,7 +217,7 @@ export default function CustomLessonForm({ onBack, onStart }: Props) {
             disabled={!canSave}
             className="rounded-xl border border-aurora-emerald/30 bg-aurora-emerald/10 px-5 py-2.5 text-sm font-medium text-aurora-emerald hover:bg-aurora-emerald/20 hover:border-aurora-emerald/50 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {saved ? 'Saved!' : 'Save'}
+            {saving ? 'Saving...' : saved ? 'Saved!' : 'Save'}
           </button>
           <button
             onClick={handleSaveAndStart}

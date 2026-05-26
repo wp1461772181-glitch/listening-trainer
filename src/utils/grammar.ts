@@ -6,6 +6,65 @@ export interface GrammarMatch {
   replacements: { value: string }[];
 }
 
+export interface SpacingResult {
+  hasIssues: boolean;
+  issues: string[];
+  fixed: string;
+}
+
+const PUNCTUATION = new Set(['.', ',', '!', '?', ';', ':']);
+
+export function checkSpacing(text: string): SpacingResult {
+  const issues: string[] = [];
+  let fixed = text.trim();
+
+  if (fixed !== text) {
+    issues.push('移除首尾多余空格');
+  }
+
+  // Collapse multiple spaces, tabs, newlines into single space
+  const collapsed = fixed.replace(/[\s\t\n\r]+/g, ' ');
+  if (collapsed !== fixed) {
+    issues.push('合并多余空格和换行');
+    fixed = collapsed;
+  }
+
+  // Remove space before punctuation: "hello , world" → "hello, world"
+  const beforeFix = fixed.replace(/\s+([.,!?;:])/g, '$1');
+  if (beforeFix !== fixed) {
+    issues.push('删除标点符号前的空格');
+    fixed = beforeFix;
+  }
+
+  // Ensure space after punctuation: "hello,world" → "hello, world"
+  let afterFix = '';
+  for (let i = 0; i < fixed.length; i++) {
+    afterFix += fixed[i];
+    if (PUNCTUATION.has(fixed[i]) && i + 1 < fixed.length && fixed[i + 1] !== ' ') {
+      afterFix += ' ';
+    }
+  }
+  if (afterFix !== fixed) {
+    issues.push('标点符号后添加空格');
+    fixed = afterFix;
+  }
+
+  // Capitalize first letter
+  if (fixed.length > 0 && fixed[0] !== fixed[0].toUpperCase()) {
+    fixed = fixed[0].toUpperCase() + fixed.slice(1);
+    issues.push('首字母大写');
+  }
+
+  // Final trim (in case any fixes introduced trailing space)
+  fixed = fixed.trim();
+
+  return { hasIssues: issues.length > 0, issues, fixed };
+}
+
+export function normalizeText(text: string): string {
+  return checkSpacing(text).fixed;
+}
+
 const LT_API = 'https://api.languagetool.org/v2/check';
 
 export async function checkGrammar(text: string): Promise<GrammarMatch[]> {
