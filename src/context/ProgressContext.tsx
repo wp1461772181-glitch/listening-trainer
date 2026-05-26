@@ -5,7 +5,7 @@ import { useAuth } from './AuthContext';
 
 interface ProgressContextType {
   progress: ProgressMap;
-  saveLesson: (lessonId: string, score: number) => void;
+  saveLesson: (lessonId: string, score: number, keywords?: string, reconstruction?: string, diffJson?: string, listenCount?: number) => void;
   getBestScore: (lessonId: string) => number | null;
   totalCompleted: number;
 }
@@ -41,7 +41,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   const saveLesson = useCallback(
-    (lessonId: string, score: number) => {
+    (lessonId: string, score: number, keywords?: string, reconstruction?: string, diffJson?: string, listenCount?: number) => {
       if (!user) return;
 
       setProgress((prev) => {
@@ -53,7 +53,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
           bestScore: Math.max(score, existing?.bestScore ?? 0),
         };
 
-        apiSaveProgress(lessonId, score).catch((err) => {
+        apiSaveProgress(lessonId, score, keywords, reconstruction, diffJson, listenCount).catch((err) => {
           console.error('Failed to save progress:', err.message);
         });
 

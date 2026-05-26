@@ -10,6 +10,7 @@ import Player from './components/Player';
 import CustomLessonForm from './components/CustomLessonForm';
 import HistoryPanel from './components/HistoryPanel';
 import LessonHistoryPanel from './components/LessonHistoryPanel';
+import HistoryDetailPanel from './components/HistoryDetailPanel';
 import { fetchCustomLessons } from './utils/customLessons';
 import AuthForm from './components/AuthForm';
 
@@ -54,6 +55,7 @@ function AppRoutes() {
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
   const [customLessons, setCustomLessons] = useState<Lesson[]>([]);
   const [returnView, setReturnView] = useState<'lessons' | 'history'>('lessons');
+  const [historyDetailId, setHistoryDetailId] = useState<number | null>(null);
   const { progress } = useProgress();
 
   useEffect(() => {
@@ -96,6 +98,11 @@ function AppRoutes() {
     setView('lessonHistory');
   }, []);
 
+  const handleViewHistoryDetail = useCallback((progressId: number) => {
+    setHistoryDetailId(progressId);
+    setView('historyDetail');
+  }, []);
+
   const handleStartFromHistory = useCallback((lesson: Lesson) => {
     setCurrentLesson(lesson);
     setReturnView('history');
@@ -106,6 +113,14 @@ function AppRoutes() {
     setView('history');
     setCurrentLesson(null);
   }, []);
+
+  const handleBackFromDetail = useCallback(() => {
+    if (currentLesson) {
+      setView('lessonHistory');
+    } else {
+      setView('history');
+    }
+  }, [currentLesson]);
 
   const handleGoCustom = useCallback(() => {
     setView('custom');
@@ -157,6 +172,18 @@ function AppRoutes() {
         <LessonHistoryPanel
           lesson={currentLesson}
           onStartPractice={handleStartFromHistory}
+          onViewDetail={handleViewHistoryDetail}
+        />
+      </Layout>
+    );
+  }
+
+  if (view === 'historyDetail' && historyDetailId) {
+    return (
+      <Layout onHome={handleGoHome} showBack onBack={handleBackFromDetail}>
+        <HistoryDetailPanel
+          progressId={historyDetailId}
+          onBack={handleBackFromDetail}
         />
       </Layout>
     );

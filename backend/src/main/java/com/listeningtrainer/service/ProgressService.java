@@ -1,11 +1,14 @@
 package com.listeningtrainer.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.listeningtrainer.dto.PracticeDetailResponse;
 import com.listeningtrainer.dto.ProgressHistoryResponse;
 import com.listeningtrainer.dto.ProgressRequest;
 import com.listeningtrainer.dto.ProgressResponse;
+import com.listeningtrainer.entity.PracticeDetail;
 import com.listeningtrainer.entity.UserProgress;
 import com.listeningtrainer.entity.UserProgressSummary;
+import com.listeningtrainer.mapper.PracticeDetailMapper;
 import com.listeningtrainer.mapper.UserProgressMapper;
 import com.listeningtrainer.mapper.UserProgressSummaryMapper;
 import org.springframework.stereotype.Service;
@@ -18,10 +21,14 @@ public class ProgressService {
 
     private final UserProgressMapper progressMapper;
     private final UserProgressSummaryMapper summaryMapper;
+    private final PracticeDetailMapper detailMapper;
 
-    public ProgressService(UserProgressMapper progressMapper, UserProgressSummaryMapper summaryMapper) {
+    public ProgressService(UserProgressMapper progressMapper,
+                           UserProgressSummaryMapper summaryMapper,
+                           PracticeDetailMapper detailMapper) {
         this.progressMapper = progressMapper;
         this.summaryMapper = summaryMapper;
+        this.detailMapper = detailMapper;
     }
 
     public List<ProgressResponse> getProgress(Long userId) {
@@ -64,12 +71,44 @@ public class ProgressService {
                 .toList();
     }
 
+    public PracticeDetailResponse getProgressDetail(Long userId, Long progressId) {
+        LambdaQueryWrapper<PracticeDetail> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(PracticeDetail::getProgressId, progressId)
+               .eq(PracticeDetail::getUserId, userId);
+        PracticeDetail d = detailMapper.selectOne(wrapper);
+        if (d == null) return null;
+        return new PracticeDetailResponse(
+                d.getId(),
+                d.getProgressId(),
+                d.getLessonId(),
+                d.getKeywords(),
+                d.getReconstruction(),
+                d.getDiffJson(),
+                d.getListenCount(),
+                d.getScore(),
+                d.getCreatedAt()
+        );
+    }
+
     public ProgressResponse saveProgress(Long userId, ProgressRequest request) {
         // 1. Insert detail row
         UserProgress detail = new UserProgress(userId, request.getLessonId(), request.getScore(), LocalDate.now());
         progressMapper.insert(detail);
 
-        // 2. Upsert summary
+        // 2. Save practice step details
+        PracticeDetail pd = new PracticeDetail();
+        pd.setProgressId(detail.getId());
+        pd.setUserId(userId);
+        pd.setLessonId(request.getLessonId());
+        pd.setKeywords(request.getKeywords());
+        pd.setReconstruction(request.getReconstruction());
+        pd.setDiffJson(request.getDiffJson());
+        pd.setListenCount(request.getListenCount() != null ? request.getListenCount() : 0);
+        pd.setScore(request.getScore());
+        pd.setCreatedAt(LocalDate.now());
+        detailMapper.insert(pd);
+
+        // 3. Upsert summary
         LambdaQueryWrapper<UserProgressSummary> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(UserProgressSummary::getUserId, userId)
                .eq(UserProgressSummary::getLessonId, request.getLessonId());

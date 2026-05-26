@@ -21,7 +21,7 @@ export interface ProgressMap {
   [lessonId: string]: LessonProgress;
 }
 
-export type View = 'home' | 'lessons' | 'player' | 'custom' | 'history' | 'lessonHistory';
+export type View = 'home' | 'lessons' | 'player' | 'custom' | 'history' | 'lessonHistory' | 'historyDetail';
 
 export interface AppState {
   view: View;

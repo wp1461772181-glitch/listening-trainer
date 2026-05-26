@@ -80,10 +80,17 @@ export async function apiGetProgress(): Promise<ProgressData[]> {
   return request<ProgressData[]>('/api/progress');
 }
 
-export async function apiSaveProgress(lessonId: string, score: number): Promise<ProgressData> {
+export async function apiSaveProgress(
+  lessonId: string,
+  score: number,
+  keywords?: string,
+  reconstruction?: string,
+  diffJson?: string,
+  listenCount?: number
+): Promise<ProgressData> {
   return request<ProgressData>('/api/progress', {
     method: 'POST',
-    body: JSON.stringify({ lessonId, score }),
+    body: JSON.stringify({ lessonId, score, keywords, reconstruction, diffJson, listenCount }),
   });
 }
 
@@ -101,6 +108,23 @@ export async function apiGetHistory(): Promise<HistoryRow[]> {
 
 export async function apiGetLessonHistory(lessonId: string): Promise<HistoryRow[]> {
   return request<HistoryRow[]>(`/api/progress/${encodeURIComponent(lessonId)}/history`);
+}
+
+// Practice Detail API
+export interface PracticeDetail {
+  id: number;
+  progressId: number;
+  lessonId: string;
+  keywords: string | null;
+  reconstruction: string | null;
+  diffJson: string | null;
+  listenCount: number;
+  score: number;
+  createdAt: string;
+}
+
+export async function apiGetProgressDetail(progressId: number): Promise<PracticeDetail> {
+  return request<PracticeDetail>(`/api/progress/detail/${progressId}`);
 }
 
 // Lessons API

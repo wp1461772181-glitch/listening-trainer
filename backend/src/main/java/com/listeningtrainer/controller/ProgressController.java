@@ -34,6 +34,16 @@ public class ProgressController {
         return ResponseEntity.ok(progressService.getLessonHistory(user.getId(), lessonId));
     }
 
+    @GetMapping("/detail/{progressId}")
+    public ResponseEntity<?> getProgressDetail(@AuthenticationPrincipal User user,
+                                               @PathVariable Long progressId) {
+        PracticeDetailResponse detail = progressService.getProgressDetail(user.getId(), progressId);
+        if (detail == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(detail);
+    }
+
     @PostMapping
     public ResponseEntity<?> saveProgress(@AuthenticationPrincipal User user,
                                           @Valid @RequestBody ProgressRequest request) {

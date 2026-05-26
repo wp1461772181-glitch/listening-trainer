@@ -14,9 +14,10 @@ function tierLabel(d: string): string {
 interface LessonHistoryPanelProps {
   lesson: Lesson;
   onStartPractice: (lesson: Lesson) => void;
+  onViewDetail: (progressId: number) => void;
 }
 
-export default function LessonHistoryPanel({ lesson, onStartPractice }: LessonHistoryPanelProps) {
+export default function LessonHistoryPanel({ lesson, onStartPractice, onViewDetail }: LessonHistoryPanelProps) {
   const [rows, setRows] = useState<HistoryRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -64,9 +65,10 @@ export default function LessonHistoryPanel({ lesson, onStartPractice }: LessonHi
       ) : (
         <div className="space-y-2">
           {rows.map((row, i) => (
-            <div
+            <button
               key={row.id}
-              className="flex items-center gap-4 rounded-xl glass px-4 py-3 animate-fade-in-up"
+              onClick={() => onViewDetail(row.id)}
+              className="flex items-center gap-4 rounded-xl glass px-4 py-3 w-full text-left hover:bg-aurora-card/70 hover:border-aurora-border transition-all duration-200 animate-fade-in-up"
               style={{ animationDelay: `${i * 0.05}s` }}
             >
               <div className="flex items-center gap-3">
@@ -89,7 +91,10 @@ export default function LessonHistoryPanel({ lesson, onStartPractice }: LessonHi
                   <div className="text-xs font-semibold text-aurora-emerald">Best</div>
                 )}
               </div>
-            </div>
+              <svg className="h-4 w-4 text-aurora-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
           ))}
         </div>
       )}

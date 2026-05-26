@@ -120,8 +120,9 @@ export default function Player({ lesson, onBack, onSelectLesson }: PlayerProps) 
     setDiff(result);
     setScore(s);
     setStage('result');
-    saveLesson(lesson.id, s);
-  }, [lesson, reconstruction, saveLesson]);
+    const diffJson = JSON.stringify(result);
+    saveLesson(lesson.id, s, keywords, reconstruction, diffJson, listenCount);
+  }, [lesson, reconstruction, keywords, listenCount, saveLesson]);
 
   const handleRetry = useCallback(() => {
     setKeywords('');
