@@ -14,12 +14,42 @@ export interface SpacingResult {
 
 const PUNCTUATION = new Set(['.', ',', '!', '?', ';', ':']);
 
+const CN_TO_EN: Record<string, string> = {
+  '，': ',',  // ，
+  '。': '.',  // 。
+  '；': ';',  // ；
+  '：': ':',  // ：
+  '？': '?',  // ？
+  '！': '!',  // ！
+  '‘': "'",  // '
+  '’': "'",  // '
+  '“': '"',  // "
+  '”': '"',  // "
+  '（': '(',  // （
+  '）': ')',  // ）
+};
+
+const CN_PUNCT_REGEX = /[，。；：？！‘’“”（）]/g;
+
 export function checkSpacing(text: string): SpacingResult {
   const issues: string[] = [];
   let fixed = text.trim();
 
   if (fixed !== text) {
     issues.push('移除首尾多余空格');
+  }
+
+  // Detect and replace Chinese punctuation
+  const chinesePunct: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = CN_PUNCT_REGEX.exec(fixed)) !== null) {
+    chinesePunct.push(m[0]);
+  }
+  if (chinesePunct.length > 0) {
+    const unique = [...new Set(chinesePunct)];
+    const labels = unique.map((c) => `"${c}"`);
+    issues.push(`检测到 ${chinesePunct.length} 个中文标点符号: ${labels.join(', ')}`);
+    fixed = fixed.replace(CN_PUNCT_REGEX, (c) => CN_TO_EN[c] || c);
   }
 
   // Collapse multiple spaces, tabs, newlines into single space
