@@ -94,11 +94,13 @@ function AppRoutes() {
   }, []);
 
   const handleViewLessonHistory = useCallback((lesson: Lesson) => {
+    console.log('[App] handleViewLessonHistory called', lesson.id);
     setCurrentLesson(lesson);
     setView('lessonHistory');
   }, []);
 
   const handleViewHistoryDetail = useCallback((progressId: number) => {
+    console.log('[App] handleViewHistoryDetail called', progressId);
     setHistoryDetailId(progressId);
     setView('historyDetail');
   }, []);
