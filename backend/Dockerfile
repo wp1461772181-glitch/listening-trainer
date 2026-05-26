@@ -15,6 +15,6 @@ RUN mkdir -p /app/data
 EXPOSE 8080
 
 ENV SPRING_PROFILES_ACTIVE=render
-ENV APP_CORS_ORIGINS=http://localhost:*
+ENV APP_CORS_ORIGINS=http://localhost:*,https://listening-trainer-xi.vercel.app
 
 CMD ["java", "-jar", "app.jar"]
