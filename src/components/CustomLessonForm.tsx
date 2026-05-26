@@ -59,30 +59,30 @@ export default function CustomLessonForm({ onBack, onStart }: Props) {
       <div className="flex items-center gap-3">
         <button
           onClick={onBack}
-          className="rounded-lg p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+          className="rounded-lg p-1.5 text-aurora-muted hover:text-white hover:bg-white/5 transition-all duration-200"
         >
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        <h2 className="text-xl font-bold text-white">Create Custom Lesson</h2>
+        <h2 className="text-xl font-bold text-white tracking-tight">Create Custom Lesson</h2>
       </div>
 
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/30 p-6 space-y-5">
+      <div className="rounded-2xl glass p-6 space-y-5">
         {/* Title */}
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-300">Title</label>
+          <label className="mb-1.5 block text-sm font-semibold text-aurora-text">Title</label>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="e.g., My Biology Notes"
-            className="w-full rounded-xl border border-slate-700 bg-slate-900/50 px-4 py-2.5 text-sm text-slate-200 placeholder-slate-600 focus:border-violet-500 focus:outline-none"
+            className="w-full rounded-xl border border-aurora-border bg-aurora-surface/60 px-4 py-2.5 text-sm text-aurora-text placeholder:text-aurora-muted/50 focus:border-aurora-violet/50 focus:outline-none focus:ring-2 focus:ring-aurora-violet/10 transition-all"
           />
         </div>
 
         {/* Difficulty */}
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-300">Difficulty</label>
+          <label className="mb-1.5 block text-sm font-semibold text-aurora-text">Difficulty</label>
           <div className="flex gap-2">
             {([
               ['daily', 'Daily'],
@@ -92,10 +92,10 @@ export default function CustomLessonForm({ onBack, onStart }: Props) {
               <button
                 key={val}
                 onClick={() => setDifficulty(val)}
-                className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${
+                className={`rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 ${
                   difficulty === val
-                    ? 'bg-violet-600 text-white'
-                    : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                    ? 'bg-aurora-violet text-white shadow-[0_0_12px_rgba(139,92,246,0.3)]'
+                    : 'bg-aurora-border/40 text-aurora-muted hover:bg-aurora-border hover:text-white'
                 }`}
               >
                 {label}
@@ -106,46 +106,39 @@ export default function CustomLessonForm({ onBack, onStart }: Props) {
 
         {/* Voice */}
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-300">TTS Voice</label>
+          <label className="mb-1.5 block text-sm font-semibold text-aurora-text">TTS Voice</label>
           <div className="flex gap-2">
-            <button
-              onClick={() => setVoice('female')}
-              className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${
-                voice === 'female'
-                  ? 'bg-violet-600 text-white'
-                  : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-              }`}
-            >
-              Female
-            </button>
-            <button
-              onClick={() => setVoice('male')}
-              className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${
-                voice === 'male'
-                  ? 'bg-violet-600 text-white'
-                  : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-              }`}
-            >
-              Male
-            </button>
+            {(['female', 'male'] as const).map((v) => (
+              <button
+                key={v}
+                onClick={() => setVoice(v)}
+                className={`rounded-lg px-4 py-2 text-sm font-medium capitalize transition-all duration-200 ${
+                  voice === v
+                    ? 'bg-aurora-violet text-white shadow-[0_0_12px_rgba(139,92,246,0.3)]'
+                    : 'bg-aurora-border/40 text-aurora-muted hover:bg-aurora-border hover:text-white'
+                }`}
+              >
+                {v}
+              </button>
+            ))}
           </div>
         </div>
 
         {/* Hint */}
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-300">Context / Hint</label>
+          <label className="mb-1.5 block text-sm font-semibold text-aurora-text">Context / Hint</label>
           <input
             value={hint}
             onChange={(e) => setHint(e.target.value)}
             placeholder="e.g., Biology lecture about cell structure"
-            className="w-full rounded-xl border border-slate-700 bg-slate-900/50 px-4 py-2.5 text-sm text-slate-200 placeholder-slate-600 focus:border-violet-500 focus:outline-none"
+            className="w-full rounded-xl border border-aurora-border bg-aurora-surface/60 px-4 py-2.5 text-sm text-aurora-text placeholder:text-aurora-muted/50 focus:border-aurora-violet/50 focus:outline-none focus:ring-2 focus:ring-aurora-violet/10 transition-all"
           />
         </div>
 
         {/* Sentence */}
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-300">
-            Sentence <span className="text-slate-500">(the text you'll hear and reconstruct)</span>
+          <label className="mb-1.5 block text-sm font-semibold text-aurora-text">
+            Sentence <span className="text-aurora-muted font-normal">(the text you'll hear and reconstruct)</span>
           </label>
           <textarea
             value={sentence}
@@ -156,7 +149,7 @@ export default function CustomLessonForm({ onBack, onStart }: Props) {
             }}
             placeholder="Enter the full sentence or paragraph you want to practice with..."
             rows={4}
-            className="w-full resize-none rounded-xl border border-slate-700 bg-slate-900/50 p-4 text-sm leading-relaxed text-slate-200 placeholder-slate-600 focus:border-violet-500 focus:outline-none"
+            className="w-full resize-none rounded-xl border border-aurora-border bg-aurora-surface/60 p-4 text-sm leading-relaxed text-aurora-text placeholder:text-aurora-muted/50 focus:border-aurora-violet/50 focus:outline-none focus:ring-2 focus:ring-aurora-violet/10 transition-all"
           />
         </div>
 
@@ -165,21 +158,21 @@ export default function CustomLessonForm({ onBack, onStart }: Props) {
           <button
             onClick={handleCheck}
             disabled={!sentence.trim() || checking}
-            className="rounded-xl border border-slate-700 px-5 py-2.5 text-sm font-medium text-slate-300 hover:border-slate-500 hover:text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            className="rounded-xl border border-aurora-border bg-white/5 px-5 py-2.5 text-sm font-medium text-aurora-text hover:border-aurora-cyan/50 hover:text-aurora-cyan hover:bg-aurora-cyan/5 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {checking ? 'Checking...' : 'Check Grammar'}
           </button>
           <button
             onClick={handleSave}
             disabled={!canSave}
-            className="rounded-xl border border-emerald-700/50 bg-emerald-900/20 px-5 py-2.5 text-sm font-medium text-emerald-400 hover:bg-emerald-900/40 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            className="rounded-xl border border-aurora-emerald/30 bg-aurora-emerald/10 px-5 py-2.5 text-sm font-medium text-aurora-emerald hover:bg-aurora-emerald/20 hover:border-aurora-emerald/50 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {saved ? 'Saved!' : 'Save'}
           </button>
           <button
             onClick={handleSaveAndStart}
             disabled={!canSave}
-            className="flex-1 rounded-xl bg-violet-600 py-2.5 text-sm font-semibold text-white transition-all hover:bg-violet-500 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex-1 rounded-xl bg-gradient-to-r from-aurora-violet to-violet-600 py-2.5 text-sm font-semibold text-white transition-all duration-300 hover:glow-violet active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Save & Practice
           </button>
@@ -187,34 +180,42 @@ export default function CustomLessonForm({ onBack, onStart }: Props) {
 
         {/* Grammar results */}
         {checking && (
-          <div className="text-center text-sm text-slate-500">Checking grammar...</div>
+          <div className="flex items-center justify-center gap-2 py-4 text-sm text-aurora-muted">
+            <div className="h-4 w-4 rounded-full border-2 border-aurora-violet/30 border-t-aurora-violet animate-spin" />
+            Checking grammar...
+          </div>
         )}
 
         {checked && !checking && (
-          <div className={`rounded-xl border p-4 ${matches.length === 0 ? 'border-emerald-700/50 bg-emerald-900/10' : 'border-amber-700/50 bg-amber-900/10'}`}>
+          <div className={`rounded-xl border p-4 ${matches.length === 0 ? 'border-aurora-emerald/30 bg-aurora-emerald/5' : 'border-aurora-amber/30 bg-aurora-amber/5'}`}>
             {matches.length === 0 ? (
-              <p className="text-sm text-emerald-400">No grammar issues found.</p>
+              <div className="flex items-center gap-2">
+                <svg className="h-5 w-5 text-aurora-emerald" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+                <p className="text-sm font-medium text-aurora-emerald">No grammar issues found.</p>
+              </div>
             ) : (
               <div className="space-y-3">
-                <p className="text-sm font-medium text-amber-400">
+                <p className="text-sm font-semibold text-aurora-amber">
                   {matches.length} potential {matches.length === 1 ? 'issue' : 'issues'} found:
                 </p>
 
-                <div className="rounded-lg bg-slate-950/50 p-3 text-sm leading-relaxed text-slate-200">
+                <div className="rounded-lg bg-aurora-surface/80 p-3 text-sm leading-relaxed text-aurora-text">
                   <span dangerouslySetInnerHTML={{ __html: highlightErrors(sentence, matches) }} />
                 </div>
 
                 <div className="space-y-2">
                   {matches.map((m, i) => (
-                    <div key={i} className="rounded-lg bg-slate-950/30 p-3 text-sm">
+                    <div key={i} className="rounded-lg bg-aurora-surface/60 p-3 text-sm">
                       <div className="flex items-start gap-2">
-                        <span className="mt-0.5 shrink-0 rounded bg-red-600/20 px-1.5 py-0.5 text-xs text-red-400">
+                        <span className="mt-0.5 shrink-0 rounded bg-red-500/20 px-1.5 py-0.5 text-xs font-medium text-red-400">
                           {sentence.slice(m.offset, m.offset + m.length)}
                         </span>
                         <div>
-                          <p className="text-slate-300">{m.message}</p>
+                          <p className="text-aurora-text">{m.message}</p>
                           {m.replacements.length > 0 && (
-                            <p className="mt-1 text-xs text-slate-500">
+                            <p className="mt-1 text-xs text-aurora-muted">
                               Suggestion:{' '}
                               {m.replacements.slice(0, 3).map((r, j) => (
                                 <span key={j}>
@@ -227,7 +228,7 @@ export default function CustomLessonForm({ onBack, onStart }: Props) {
                                       setChecked(false);
                                       setMatches([]);
                                     }}
-                                    className="text-violet-400 hover:text-violet-300 underline"
+                                    className="text-aurora-violet hover:text-aurora-violet/80 underline font-medium"
                                   >
                                     {r.value}
                                   </button>

@@ -164,17 +164,17 @@ export default function Player({ lesson, onBack, onSelectLesson }: PlayerProps) 
       <div className="flex items-center gap-3">
         <button
           onClick={onBack}
-          className="rounded-lg p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+          className="rounded-lg p-1.5 text-aurora-muted hover:text-white hover:bg-white/5 transition-all duration-200"
         >
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
         </button>
         <div>
-          <h2 className="text-xl font-bold text-white">{lesson.title}</h2>
-          <div className="flex items-center gap-2 text-xs text-violet-400">
-            <span>Dictogloss</span>
-            <span className="text-slate-600">·</span>
+          <h2 className="text-xl font-bold text-white tracking-tight">{lesson.title}</h2>
+          <div className="flex items-center gap-2 text-xs text-aurora-violet">
+            <span className="font-medium">Dictogloss</span>
+            <span className="text-aurora-border">·</span>
             <span>{tierLabel(lesson.difficulty)}</span>
           </div>
         </div>
@@ -185,22 +185,22 @@ export default function Player({ lesson, onBack, onSelectLesson }: PlayerProps) 
         {stages.map((s, i) => (
           <div key={s} className="flex items-center gap-1">
             <div
-              className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all ${
+              className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold transition-all duration-500 ${
                 i < stageIdx
-                  ? 'bg-emerald-600 text-white'
+                  ? 'bg-aurora-emerald text-white shadow-[0_0_12px_rgba(16,185,129,0.3)]'
                   : i === stageIdx
-                  ? 'bg-violet-600 text-white ring-2 ring-violet-400/50'
-                  : 'bg-slate-800 text-slate-600'
+                  ? 'bg-aurora-violet text-white animate-stage-pulse'
+                  : 'bg-aurora-border/40 text-aurora-muted'
               }`}
             >
               {i + 1}
             </div>
             {i < 4 && (
-              <div className={`h-0.5 w-3 rounded ${i < stageIdx ? 'bg-emerald-600' : 'bg-slate-800'}`} />
+              <div className={`h-0.5 w-3 rounded-full transition-all duration-500 ${i < stageIdx ? 'bg-aurora-emerald' : 'bg-aurora-border/40'}`} />
             )}
           </div>
         ))}
-        <span className="ml-2 text-xs text-slate-500">{stageLabels[stage]}</span>
+        <span className="ml-2 text-xs font-medium text-aurora-muted">{stageLabels[stage]}</span>
       </div>
 
       {/* Stage content */}
@@ -266,29 +266,29 @@ function PrepStage({ lesson, keywords, audioReady, onStart }: {
   onStart: () => void;
 }) {
   return (
-    <div className="space-y-6 rounded-2xl border border-slate-800 bg-slate-900/30 p-6">
+    <div className="space-y-6 rounded-2xl glass p-6 animate-fade-in-up">
       <div>
-        <h3 className="text-lg font-semibold text-white">Prepare to Listen</h3>
-        <p className="mt-2 text-sm leading-relaxed text-slate-400">
-          You will hear the audio <strong className="text-white">twice</strong>.
+        <h3 className="text-lg font-bold text-white tracking-tight">Prepare to Listen</h3>
+        <p className="mt-2 text-sm leading-relaxed text-aurora-muted">
+          You will hear the audio <strong className="text-white font-semibold">twice</strong>.
           First, just listen without writing anything.
           Then, take keyword notes while listening a second time.
-          Finally, reconstruct the full text <strong className="text-white">from memory</strong>.
+          Finally, reconstruct the full text <strong className="text-white font-semibold">from memory</strong>.
         </p>
       </div>
 
-      <div>
-        <h4 className="mb-2 text-sm font-medium text-slate-300">Topic</h4>
-        <p className="text-sm text-slate-400">{lesson.hint}</p>
+      <div className="rounded-xl bg-aurora-violet/5 border border-aurora-violet/10 p-4">
+        <h4 className="mb-1.5 text-sm font-semibold text-aurora-text">Topic</h4>
+        <p className="text-sm text-aurora-muted">{lesson.hint}</p>
       </div>
 
       <div>
-        <h4 className="mb-2 text-sm font-medium text-slate-300">Key vocabulary to listen for</h4>
+        <h4 className="mb-2 text-sm font-semibold text-aurora-text">Key vocabulary to listen for</h4>
         <div className="flex flex-wrap gap-2">
           {keywords.map((kw) => (
             <span
               key={kw}
-              className="rounded-full border border-violet-700/50 bg-violet-900/20 px-3 py-1 text-sm text-violet-300"
+              className="rounded-full border border-aurora-violet/25 bg-aurora-violet/10 px-3.5 py-1.5 text-sm font-medium text-aurora-violet"
             >
               {kw}
             </span>
@@ -299,7 +299,7 @@ function PrepStage({ lesson, keywords, audioReady, onStart }: {
       <button
         onClick={onStart}
         disabled={!audioReady}
-        className="w-full rounded-xl bg-violet-600 py-3 font-semibold text-white transition-all hover:bg-violet-500 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+        className="w-full rounded-xl bg-gradient-to-r from-aurora-violet to-violet-600 py-3.5 font-semibold text-white transition-all duration-300 hover:glow-violet active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {audioReady ? 'Start Listening' : 'Preparing audio...'}
       </button>
@@ -320,8 +320,8 @@ function ListenStage({ stage, keywords, onChangeKeywords, isPlaying, speed, list
   onNext: () => void;
 }) {
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-900/30 p-6">
+    <div className="space-y-6 animate-fade-in-up">
+      <div className="flex items-center justify-between rounded-2xl glass p-5">
         <AudioControls
           isPlaying={isPlaying}
           speed={speed}
@@ -330,28 +330,34 @@ function ListenStage({ stage, keywords, onChangeKeywords, isPlaying, speed, list
           onChangeSpeed={onChangeSpeed}
         />
         <div className="text-center">
-          <div className="text-2xl font-bold text-white">{listenCount}</div>
-          <div className="text-xs text-slate-500">plays</div>
+          <div className="text-2xl font-extrabold text-white tabular-nums">{listenCount}</div>
+          <div className="text-xs text-aurora-muted font-medium">plays</div>
         </div>
       </div>
 
       {stage === 'listen1' ? (
-        <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/20 p-8 text-center">
-          <div className="mb-3 text-4xl">👂</div>
-          <p className="text-slate-400">Just listen. Do not write anything.</p>
-          <p className="mt-1 text-sm text-slate-600">Focus on understanding the overall meaning.</p>
+        <div className="rounded-2xl glass border-dashed border-aurora-violet/20 p-10 text-center">
+          <div className="mb-3 flex justify-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-aurora-violet/10">
+              <svg className="h-8 w-8 text-aurora-violet/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+              </svg>
+            </div>
+          </div>
+          <p className="text-aurora-text font-medium">Just listen. Do not write anything.</p>
+          <p className="mt-1.5 text-sm text-aurora-muted">Focus on understanding the overall meaning.</p>
         </div>
       ) : (
         <div>
-          <div className="mb-3 rounded-2xl border border-dashed border-amber-700/50 bg-amber-900/10 p-4 text-center">
-            <p className="text-sm text-amber-400">Take keyword notes now. Write down important words only — not the full text.</p>
+          <div className="mb-4 rounded-xl border border-aurora-amber/20 bg-aurora-amber/5 p-4 text-center">
+            <p className="text-sm font-medium text-aurora-amber">Take keyword notes while you listen. Write down important words only — not the full text.</p>
           </div>
           <textarea
             value={keywords}
             onChange={(e) => onChangeKeywords(e.target.value)}
             placeholder="Type keywords as you listen...&#10;e.g., mitochondria, energy, ATP, oxidative"
             rows={5}
-            className="w-full resize-none rounded-xl border border-slate-700 bg-slate-900/50 p-4 text-sm text-slate-200 placeholder-slate-600 focus:border-amber-500 focus:outline-none"
+            className="w-full resize-none rounded-xl border border-aurora-border bg-aurora-surface/60 p-4 text-sm leading-relaxed text-aurora-text placeholder:text-aurora-muted/50 focus:border-aurora-amber/50 focus:outline-none focus:ring-2 focus:ring-aurora-amber/10 transition-all"
             autoFocus
           />
         </div>
@@ -359,7 +365,7 @@ function ListenStage({ stage, keywords, onChangeKeywords, isPlaying, speed, list
 
       <button
         onClick={onNext}
-        className="w-full rounded-xl bg-violet-600 py-3 font-semibold text-white transition-all hover:bg-violet-500 active:scale-[0.98]"
+        className="w-full rounded-xl bg-gradient-to-r from-aurora-violet to-violet-600 py-3.5 font-semibold text-white transition-all duration-300 hover:glow-violet active:scale-[0.98]"
       >
         {stage === 'listen1' ? "I've Listened — Take Notes Now" : "I'm Done — Reconstruct from Memory"}
       </button>
@@ -379,30 +385,30 @@ function ReconstructStage({ keywords, value, onChange, onSubmit, onReplayAudio, 
   onChangeSpeed: () => void;
 }) {
   return (
-    <div className="space-y-6">
-      {/* Mini audio bar for reference */}
-      <div className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/30 px-4 py-2">
+    <div className="space-y-6 animate-fade-in-up">
+      {/* Mini audio bar */}
+      <div className="flex items-center gap-3 rounded-xl glass px-4 py-2.5">
         <button
           onClick={onTogglePlay}
-          className={`flex h-9 w-9 items-center justify-center rounded-full transition-all ${
+          className={`flex h-9 w-9 items-center justify-center rounded-full transition-all duration-200 ${
             isPlaying
-              ? 'bg-amber-600 text-white'
-              : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+              ? 'bg-aurora-amber text-white shadow-[0_0_12px_rgba(245,158,11,0.3)]'
+              : 'bg-aurora-border/40 text-aurora-muted hover:bg-aurora-border hover:text-white'
           }`}
         >
           {isPlaying ? (
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M10 9v6m4-6v6" />
             </svg>
           ) : (
-            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+            <svg className="h-4 w-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
               <path d="M8 5.14v14.72a1 1 0 001.555.832l11.318-7.36a1 1 0 000-1.664L9.555 4.308A1 1 0 008 5.14z" />
             </svg>
           )}
         </button>
         <button
           onClick={onReplayAudio}
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 text-slate-400 hover:text-white transition-colors"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-aurora-border text-aurora-muted hover:text-aurora-violet hover:border-aurora-violet/50 transition-all duration-200"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -410,24 +416,24 @@ function ReconstructStage({ keywords, value, onChange, onSubmit, onReplayAudio, 
         </button>
         <button
           onClick={onChangeSpeed}
-          className="rounded-md border border-slate-700 px-2 py-1 text-xs text-slate-400 hover:text-white transition-colors"
+          className="rounded-md border border-aurora-border px-2.5 py-1 text-xs font-medium text-aurora-muted hover:text-aurora-violet hover:border-aurora-violet/50 transition-all duration-200"
         >
           {speed}x
         </button>
-        <span className="ml-auto text-xs text-slate-500">Replay if needed</span>
+        <span className="ml-auto text-xs text-aurora-muted">Replay if needed</span>
       </div>
 
       {/* Your notes */}
       {keywords.trim() && (
-        <div className="rounded-xl border border-amber-800/30 bg-amber-900/10 p-3">
-          <div className="mb-1 text-xs font-medium text-amber-500">Your Notes</div>
-          <div className="text-sm leading-relaxed text-amber-300/80">{keywords}</div>
+        <div className="rounded-xl border border-aurora-amber/20 bg-aurora-amber/5 p-4">
+          <div className="mb-1.5 text-xs font-semibold text-aurora-amber uppercase tracking-wider">Your Notes</div>
+          <div className="text-sm leading-relaxed text-aurora-amber/80">{keywords}</div>
         </div>
       )}
 
       {/* Reconstruction textarea */}
       <div>
-        <div className="mb-2 text-sm font-medium text-slate-300">
+        <div className="mb-2 text-sm font-semibold text-aurora-text">
           Reconstruct the full text from memory
         </div>
         <textarea
@@ -435,7 +441,7 @@ function ReconstructStage({ keywords, value, onChange, onSubmit, onReplayAudio, 
           onChange={(e) => onChange(e.target.value)}
           placeholder="Write the complete text you heard, using your notes to help you remember..."
           rows={8}
-          className="w-full resize-none rounded-xl border border-slate-700 bg-slate-900/50 p-4 text-sm leading-relaxed text-slate-200 placeholder-slate-600 focus:border-violet-500 focus:outline-none"
+          className="w-full resize-none rounded-xl border border-aurora-border bg-aurora-surface/60 p-4 text-sm leading-relaxed text-aurora-text placeholder:text-aurora-muted/50 focus:border-aurora-violet/50 focus:outline-none focus:ring-2 focus:ring-aurora-violet/10 transition-all"
           autoFocus
         />
       </div>
@@ -443,7 +449,7 @@ function ReconstructStage({ keywords, value, onChange, onSubmit, onReplayAudio, 
       <button
         onClick={onSubmit}
         disabled={!value.trim()}
-        className="w-full rounded-xl bg-violet-600 py-3 font-semibold text-white transition-all hover:bg-violet-500 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+        className="w-full rounded-xl bg-gradient-to-r from-aurora-violet to-violet-600 py-3.5 font-semibold text-white transition-all duration-300 hover:glow-violet active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
       >
         Submit & Compare
       </button>

@@ -8,13 +8,13 @@ export default function ProgressBar({ current, total }: ProgressBarProps) {
 
   return (
     <div className="flex items-center gap-3">
-      <div className="h-1.5 flex-1 rounded-full bg-slate-800">
+      <div className="h-2 flex-1 rounded-full bg-aurora-border/40 overflow-hidden">
         <div
-          className="h-full rounded-full bg-emerald-500 transition-all duration-300"
-          style={{ width: `${pct}%` }}
+          className="h-full rounded-full bg-gradient-to-r from-aurora-emerald to-emerald-500 transition-all duration-500 ease-out"
+          style={{ width: `${Math.max(pct, 2)}%` }}
         />
       </div>
-      <span className="text-xs text-slate-500 tabular-nums">
+      <span className="text-xs font-medium text-aurora-muted tabular-nums">
         {current}/{total}
       </span>
     </div>

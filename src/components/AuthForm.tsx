@@ -31,26 +31,29 @@ export default function AuthForm() {
 
   return (
     <div className="flex min-h-[60vh] items-center justify-center">
-      <div className="w-full max-w-sm rounded-2xl border border-slate-800 bg-slate-900/50 p-8">
-        <h2 className="mb-6 text-center text-2xl font-bold text-white">
+      <div className="w-full max-w-sm rounded-2xl glass p-8 animate-fade-in-up">
+        <h2 className="mb-2 text-center text-2xl font-bold text-white tracking-tight">
           {isRegister ? 'Create Account' : 'Sign In'}
         </h2>
+        <p className="mb-6 text-center text-sm text-aurora-muted">
+          {isRegister ? 'Start your listening practice journey' : 'Continue your listening practice'}
+        </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1.5 block text-sm text-slate-400">Email</label>
+            <label className="mb-1.5 block text-sm font-medium text-aurora-text">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
               placeholder="you@example.com"
-              className="w-full rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-2.5 text-slate-200 placeholder-slate-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              className="w-full rounded-xl border border-aurora-border bg-aurora-surface/60 px-4 py-3 text-sm text-aurora-text placeholder:text-aurora-muted/50 focus:border-aurora-violet/50 focus:outline-none focus:ring-2 focus:ring-aurora-violet/10 transition-all"
             />
           </div>
 
           <div>
-            <label className="mb-1.5 block text-sm text-slate-400">Password</label>
+            <label className="mb-1.5 block text-sm font-medium text-aurora-text">Password</label>
             <input
               type="password"
               value={password}
@@ -58,18 +61,18 @@ export default function AuthForm() {
               required
               minLength={6}
               placeholder="Min 6 characters"
-              className="w-full rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-2.5 text-slate-200 placeholder-slate-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              className="w-full rounded-xl border border-aurora-border bg-aurora-surface/60 px-4 py-3 text-sm text-aurora-text placeholder:text-aurora-muted/50 focus:border-aurora-violet/50 focus:outline-none focus:ring-2 focus:ring-aurora-violet/10 transition-all"
             />
           </div>
 
           {error && (
-            <div className="rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-2.5 text-sm text-red-400">
+            <div className="rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
               {error}
             </div>
           )}
 
           {message && (
-            <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-4 py-2.5 text-sm text-emerald-400">
+            <div className="rounded-lg bg-aurora-emerald/10 border border-aurora-emerald/20 px-4 py-3 text-sm text-aurora-emerald">
               {message}
             </div>
           )}
@@ -77,7 +80,7 @@ export default function AuthForm() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-xl bg-emerald-600 py-2.5 text-sm font-medium text-white transition-all hover:bg-emerald-500 disabled:opacity-50"
+            className="w-full rounded-xl bg-gradient-to-r from-aurora-violet to-violet-600 py-3 text-sm font-semibold text-white transition-all duration-300 hover:glow-violet active:scale-[0.98] disabled:opacity-50"
           >
             {submitting ? 'Loading...' : isRegister ? 'Create Account' : 'Sign In'}
           </button>
@@ -85,7 +88,7 @@ export default function AuthForm() {
 
         <button
           onClick={() => { setIsRegister(!isRegister); setError(''); setMessage(''); }}
-          className="mt-4 w-full text-center text-sm text-slate-500 hover:text-slate-300 transition-colors"
+          className="mt-5 w-full text-center text-sm text-aurora-muted hover:text-aurora-violet transition-colors duration-200"
         >
           {isRegister ? 'Already have an account? Sign in' : "Don't have an account? Create one"}
         </button>
