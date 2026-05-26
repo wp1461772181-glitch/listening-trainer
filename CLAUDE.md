@@ -20,26 +20,30 @@ Listening Trainer — 英语听力听写练习网站。3 个难度等级（Daily
 - 前端: React 18 + TypeScript + Vite + TailwindCSS v4
 - 后端: Spring Boot 3.3 + MyBatis-Plus 3.5.7 + JWT
 - 数据库: MySQL 8.0 (ECS Docker)
-- 前端部署: Vercel (静态站)
+- 前端部署: Vercel (静态站，实际从 master 分支部署)
 - 后端部署: 阿里云 ECS 121.40.47.186:8080 (Docker)
+- 工作流: java 分支开发 → merge 到 master → Vercel 自动/手动部署
 
-### main 分支（旧版，Supabase 被墙）
-- Supabase 认证 + PostgreSQL，国内用户无法访问
+### master 分支（Vercel 部署源）
+- Vercel 从 master 部署，java 完成后 merge 过来
 
 ---
 
 ## ECS 服务器 (Docker 部署)
 
 **服务器**: 121.40.47.186 (阿里云 ECS 杭州, 2核2G)
-**SSH**: `ssh root@121.40.47.186`, 密码 `Wp1461772181.`
+**SSH**: root@121.40.47.186, 密码 `Wp1461772181.`（用 Node.js ssh2 库连接）
 
 **容器**:
 - `listening-trainer` — Spring Boot 后端 (listening-trainer:latest)
-  - 环境变量: `SPRING_PROFILES_ACTIVE=mysql`, `APP_CORS_ORIGINS=http://localhost:*,http://121.40.47.186,http://121.40.47.186:*,https://listening-trainer-xi.vercel.app,https://*.vercel.app`
+  - 环境变量: `SPRING_PROFILES_ACTIVE=mysql`, `APP_CORS_ORIGINS=...`
   - 网络: `--network app-network`, 端口: `-p 8080:8080`
 - `mysql` — MySQL 8.0 (mysql:8.0)
-  - 环境变量: `MYSQL_ROOT_PASSWORD=root`, `MYSQL_DATABASE=listening_trainer`
-  - 网络: `app-network`
+  - `MYSQL_ROOT_PASSWORD=root`, `MYSQL_DATABASE=listening_trainer`
+
+**部署脚本**:
+- `upload_backend.cjs` — SFTP 上传指定文件 + Docker rebuild + run
+- `deploy_changes.cjs` — git pull + Docker rebuild + run
 
 **重启命令**:
 ```bash
@@ -50,46 +54,114 @@ docker run -d --name listening-trainer --network app-network -p 8080:8080 \
   listening-trainer:latest
 ```
 
-⚠️ **不要用 `--link` 参数**，它只支持默认 bridge 网络，MySQL 在 `app-network` 上。
+⚠️ 不要用 `--link` 参数。MySQL 通过 `app-network` 通信，jdbc 地址用 `mysql:3306` 不是 localhost。
 
 ---
 
 ## Vercel 部署
 
 - Scope: `alan-yeager-s-projects`
-- GitHub 连动: 推 `java` 分支即可自动部署
-- CLI 手动部署: `npx vercel --prod --yes --scope alan-yeager-s-projects --token <token>`
-- ⚠️ Vercel Dashboard 里 **不要** 设 `VITE_API_URL` 环境变量，它会覆盖 `.env.production` 的空值
+- 有时 push 后不会自动部署，需手动: `npx vercel --prod --yes --scope alan-yeager-s-projects`
+- Vercel Dashboard 里不要设 `VITE_API_URL` 环境变量
 
 ---
 
-## Mixed Content 解决方案
+## 网络架构
 
-Vercel (HTTPS) → 前端相对路径 `/api/*` → vercel.json rewrites 代理 → ECS (HTTP) → 后端 CORS 白名单含 Vercel 域名
+Vercel (HTTPS) → `/api/*` → vercel.json rewrites → ECS (HTTP 8080) → 后端
 
 **关键文件**:
-- `.env.production` — `VITE_API_URL=` 空值，使前端用相对路径
+- `.env.production` — `VITE_API_URL=` 空值
 - `vercel.json` — `/api/(.*)` → `http://121.40.47.186:8080/api/$1`
-- `backend/Dockerfile` — `APP_CORS_ORIGINS` 含 Vercel HTTPS 域名
 - `src/lib/api.ts` — `API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'`
 
 ---
 
-## 本地开发
+## API 接口
 
-前端: `npm run dev`（端口 5173）
-后端: `cd backend && mvn spring-boot:run`（需 JDK 17+，路径 `C:\Program Files\Java\JDK21`）
-
-**Maven**: 系统未安装 mvn，可通过 wrapper 运行或直接用 `C:\Users\Administrator\.m2\wrapper\dists\apache-maven-3.9.6-bin\79744e88\apache-maven-3.9.6\bin\mvn`
+| 方法 | 路径 | 认证 | 说明 |
+|------|------|------|------|
+| POST | /api/auth/register | 无 | 注册 |
+| POST | /api/auth/login | 无 | 登录 |
+| GET | /api/auth/me | JWT | 当前用户 |
+| GET | /api/lessons | 无 | 内置课程列表 |
+| GET | /api/progress | JWT | 用户进度汇总 |
+| POST | /api/progress | JWT | 保存进度（同时写 user_progress + practice_details） |
+| GET | /api/progress/history | JWT | 全部练习历史 |
+| GET | /api/progress/{lessonId}/history | JWT | 指定课程历史 |
+| GET | /api/progress/detail/{progressId} | JWT | 单次练习详情 |
+| GET | /api/custom-lessons | JWT | 自定义课程列表 |
+| POST | /api/custom-lessons | JWT | 创建自定义课程 |
+| DELETE | /api/custom-lessons/{key} | JWT | 删除自定义课程 |
+| GET | /api/tts?text=...&spd=3 | 无 | 百度 TTS 音频代理（后端从 fanyi.baidu.com 获取） |
 
 ---
 
-## 关键文件
+## 数据库表（MySQL, listening_trainer）
 
-- `src/lib/api.ts` — 前端 API 客户端（fetch + JWT）
-- `src/context/AuthContext.tsx` — JWT token 存 localStorage
-- `src/context/ProgressContext.tsx` — REST API 替代 Supabase
-- `backend/src/main/java/com/listeningtrainer/config/CorsConfig.java` — CORS 配置，读 `app.cors.origins`
-- `backend/src/main/java/com/listeningtrainer/config/SecurityConfig.java` — 放通 /api/auth/** 和 /api/lessons/**
-- `backend/src/main/resources/application.properties` — 默认 h2 profile
-- `backend/Dockerfile` — 多阶段构建，render/mysql profile
+```sql
+users (id, email, password)
+user_progress (id, user_id, lesson_id, score, attempts, best_score, date)
+practice_details (id, progress_id, lesson_id, keywords, reconstruction, diff_json, listen_count, score, created_at)
+user_progress_summary (VIEW)
+custom_lessons (id, user_id, lesson_key, title, difficulty, hint, sentence, voice, created_at)
+```
+
+⚠️ practice_details 在部署前的旧记录为空，点击历史详情会显示 "Detail not found"
+
+---
+
+## 前端关键文件
+
+| 文件 | 用途 |
+|------|------|
+| `src/types/index.ts` | 类型定义：Lesson, Difficulty, View |
+| `src/data/lessons.ts` | 18 节内置课程（含 audioPath） |
+| `src/components/Player.tsx` | Dictogloss 5 阶段播放器。TTS: `/api/tts`，retry 检查 readyState |
+| `src/components/CustomLessonForm.tsx` | 自定义课程 + checkSpacing 空格校验 + 中文标点检测 + checkGrammar |
+| `src/components/HistoryPanel.tsx` | 练习历史总览 |
+| `src/components/LessonHistoryPanel.tsx` | 每节课练习记录 |
+| `src/components/HistoryDetailPanel.tsx` | 单次练习详情（4 标签页） |
+| `src/lib/api.ts` | REST API 客户端 |
+| `src/utils/grammar.ts` | checkGrammar (LanguageTool), checkSpacing (本地空格/中文标点替换), normalizeText |
+| `src/utils/customLessons.ts` | 自定义课程 CRUD |
+| `src/context/AuthContext.tsx` | JWT token 管理 |
+| `src/context/ProgressContext.tsx` | 进度 REST API |
+
+## 后端关键文件
+
+| 文件 | 用途 |
+|------|------|
+| `controller/AuthController.java` | 注册/登录/JWT |
+| `controller/LessonController.java` | 内置课程 |
+| `controller/CustomLessonController.java` | 自定义课程 CRUD |
+| `controller/ProgressController.java` | 进度保存 + 历史 + 详情 |
+| `controller/TtsController.java` | 百度 TTS 代理 `/api/tts` |
+| `service/ProgressService.java` | 进度业务（saveProgress 双表写入） |
+| `config/SecurityConfig.java` | permitAll: /api/auth/**, /api/lessons/**, /api/tts/**, /h2-console/** |
+| `config/CorsConfig.java` | CORS 读 `app.cors.origins` |
+
+## TTS 方案
+
+**百度翻译 TTS**（后端代理）：
+- URL: `https://fanyi.baidu.com/gettts?lan=en&text=...&spd=3`
+- 免费，无需 API Key，英文可用
+- Google TTS 在国内被墙，不能用
+- 后端 TtsController 用 HttpURLConnection 代理请求，返回 audio/mpeg
+
+## 文本校验
+
+CustomLessonForm 输入时自动检测：
+- 中文标点符号（，。；：？！""''（））→ 替换为英文标点
+- 首尾多余空格
+- 多余空格/换行
+- 标点符号前后空格异常
+- 首字母大写
+- 检测到问题显示蓝色提示框 + 修复预览 + "Apply Fix" 一键应用
+
+## 已知问题
+
+- Google TTS 国内被墙，已切百度 TTS
+- GitHub push 需代理（v2rayN HTTP 10808）
+- Vercel 有时不自动部署
+- 旧 practice_details 无数据（新练习会生成）
