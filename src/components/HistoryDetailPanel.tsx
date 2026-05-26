@@ -10,16 +10,14 @@ interface HistoryDetailPanelProps {
 const stageLabels = ['1. Prepare', '2. First Listen', '3. Take Notes', '4. Reconstruct', '5. Result'];
 
 export default function HistoryDetailPanel({ progressId, onBack }: HistoryDetailPanelProps) {
-  console.log('[HistoryDetailPanel] render with progressId:', progressId);
   const [detail, setDetail] = useState<PracticeDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'notes' | 'reconstruction' | 'comparison'>('overview');
 
   useEffect(() => {
-    console.log('[HistoryDetailPanel] fetching detail for progressId:', progressId);
     apiGetProgressDetail(progressId)
-      .then((d) => { console.log('[HistoryDetailPanel] got detail:', d); setDetail(d); })
-      .catch((err) => { console.error('[HistoryDetailPanel] fetch error:', err); })
+      .then(setDetail)
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, [progressId]);
 

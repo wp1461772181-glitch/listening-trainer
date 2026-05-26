@@ -22,10 +22,9 @@ export default function LessonHistoryPanel({ lesson, onStartPractice, onViewDeta
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    console.log('[LessonHistoryPanel] fetching history for', lesson.id);
     apiGetLessonHistory(lesson.id)
-      .then((data) => { console.log('[LessonHistoryPanel] got rows:', data.length); setRows(data); })
-      .catch((err) => { console.error('[LessonHistoryPanel] fetch error:', err); })
+      .then(setRows)
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, [lesson.id]);
 
