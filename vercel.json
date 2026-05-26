@@ -1,6 +1,7 @@
 {
   "outputDirectory": "dist",
   "rewrites": [
+    { "source": "/api/(.*)", "destination": "http://121.40.47.186:8080/api/$1" },
     { "source": "/(.*)", "destination": "/" }
   ]
 }
