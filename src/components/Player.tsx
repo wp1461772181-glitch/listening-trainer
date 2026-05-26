@@ -131,7 +131,8 @@ export default function Player({ lesson, onBack, onSelectLesson }: PlayerProps) 
     setScore(0);
     setRevealed(false);
     setListenCount(0);
-    setAudioReady(false);
+    const a = audioRef.current;
+    setAudioReady(a ? a.readyState >= 2 : false);
     setStage('prep');
   }, []);
 
