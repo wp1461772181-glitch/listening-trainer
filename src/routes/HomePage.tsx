@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useProgress } from '../context/ProgressContext';
 import TrendChart from '../components/TrendChart';
+import { DifficultyBarChart, AccuracyRadarChart } from '../components/StatsCharts';
 
 export default function HomePage() {
   const { user } = useAuth();
@@ -91,6 +92,12 @@ export default function HomePage() {
       <div>
         <h2 className="text-sm font-semibold text-text-secondary mb-3 uppercase tracking-wider">Progress</h2>
         <TrendChart days={7} />
+      </div>
+
+      {/* Charts row */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <DifficultyBarChart />
+        <AccuracyRadarChart />
       </div>
 
       {/* Actions */}

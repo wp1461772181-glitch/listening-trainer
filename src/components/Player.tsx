@@ -8,6 +8,7 @@ import AudioWaveform from './AudioWaveform';
 import ResultPanel from './ResultPanel';
 import Card from './ui/Card';
 import Badge from './ui/Badge';
+import { useSwipe } from '../utils/useSwipe';
 
 type DGStage = 'prep' | 'listen1' | 'listen2' | 'reconstruct' | 'result';
 
@@ -69,6 +70,11 @@ export default function Player({ lesson, onBack, onSelectLesson }: PlayerProps) 
   const [revealed, setRevealed] = useState(false);
   const [listenCount, setListenCount] = useState(0);
   const [audioReady, setAudioReady] = useState(false);
+
+  useSwipe({
+    onSwipeRight: onBack,
+    threshold: 60,
+  });
 
   const keywordList = extractKeywords(lesson.sentence);
   const audioSrc = lesson.audioPath || `/api/tts?text=${encodeURIComponent(lesson.sentence)}`;

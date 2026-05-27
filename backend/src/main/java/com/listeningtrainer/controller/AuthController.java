@@ -44,4 +44,15 @@ public class AuthController {
     public ResponseEntity<?> me(@AuthenticationPrincipal User user) {
         return ResponseEntity.ok(Map.of("email", user.getEmail()));
     }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<?> changePassword(@Valid @RequestBody ChangePasswordRequest request,
+                                            @AuthenticationPrincipal User user) {
+        try {
+            authService.changePassword(user.getId(), request.getCurrentPassword(), request.getNewPassword());
+            return ResponseEntity.ok(Map.of("message", "Password changed successfully"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
 }

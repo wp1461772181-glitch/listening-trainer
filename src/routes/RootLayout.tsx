@@ -57,7 +57,7 @@ export default function RootLayout() {
           </motion.div>
         </AnimatePresence>
       </main>
-      <MobileNav />
+      {!location.pathname.startsWith('/player') && <MobileNav />}
     </div>
   );
 }

@@ -49,4 +49,16 @@ public class AuthService {
         String token = jwtUtil.generateToken(user.getId(), user.getEmail());
         return new AuthResponse(token, user.getEmail());
     }
+
+    public void changePassword(Long userId, String currentPassword, String newPassword) {
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new RuntimeException("User not found");
+        }
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new RuntimeException("Current password is incorrect");
+        }
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userMapper.updateById(user);
+    }
 }
