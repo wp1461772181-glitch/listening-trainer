@@ -1,9 +1,11 @@
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { AnimatePresence, motion } from 'framer-motion';
 
 export default function RootLayout() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   return (
     <div className="min-h-screen bg-bg">
@@ -24,6 +26,12 @@ export default function RootLayout() {
               >
                 History
               </button>
+              <button
+                onClick={() => navigate('/settings')}
+                className="rounded-lg px-3 py-1.5 text-sm text-text-secondary hover:text-text hover:bg-bg-alt transition-all"
+              >
+                Settings
+              </button>
               <span className="hidden text-sm text-text-secondary sm:inline">{user.email}</span>
               <button
                 onClick={signOut}
@@ -36,7 +44,17 @@ export default function RootLayout() {
         </div>
       </header>
       <main className="relative mx-auto max-w-5xl px-4 py-6 sm:px-6">
-        <Outlet />
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.15 }}
+          >
+            <Outlet />
+          </motion.div>
+        </AnimatePresence>
       </main>
     </div>
   );
