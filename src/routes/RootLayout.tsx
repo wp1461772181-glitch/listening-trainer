@@ -1,6 +1,7 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { AnimatePresence, motion } from 'framer-motion';
+import MobileNav from '../components/MobileNav';
 
 export default function RootLayout() {
   const { user, signOut } = useAuth();
@@ -43,7 +44,7 @@ export default function RootLayout() {
           )}
         </div>
       </header>
-      <main className="relative mx-auto max-w-5xl px-4 py-6 sm:px-6">
+      <main className="relative mx-auto max-w-5xl px-4 pb-24 pt-6 sm:px-6 sm:pb-6">
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
@@ -56,6 +57,7 @@ export default function RootLayout() {
           </motion.div>
         </AnimatePresence>
       </main>
+      <MobileNav />
     </div>
   );
 }

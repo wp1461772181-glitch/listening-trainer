@@ -4,6 +4,7 @@ import { useProgress } from '../context/ProgressContext';
 import { compareTexts, calculateScore, type DiffToken } from '../utils/compare';
 import { getNextLessonId, getLessonById } from '../data/lessons';
 import AudioControls from './AudioControls';
+import AudioWaveform from './AudioWaveform';
 import ResultPanel from './ResultPanel';
 import Card from './ui/Card';
 import Badge from './ui/Badge';
@@ -279,17 +280,25 @@ export default function Player({ lesson, onBack, onSelectLesson }: PlayerProps) 
           </Card>
 
           {stage === 'listen1' ? (
-            <Card className="border-dashed border-primary/20 py-10 text-center">
-              <div className="mb-3 flex justify-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-surface">
-                  <svg className="h-8 w-8 text-primary/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
-                  </svg>
+            <div className="space-y-5">
+              <Card className="p-5">
+                <AudioWaveform
+                  audioElement={audioRef.current}
+                  isPlaying={isPlaying}
+                />
+              </Card>
+              <Card className="py-10 text-center">
+                <div className="mb-3 flex justify-center">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-surface">
+                    <svg className="h-8 w-8 text-primary/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+                    </svg>
+                  </div>
                 </div>
-              </div>
-              <p className="text-text font-medium">Just listen. Do not write anything.</p>
-              <p className="mt-1.5 text-sm text-text-secondary">Focus on understanding the overall meaning.</p>
-            </Card>
+                <p className="text-text font-medium">Just listen. Do not write anything.</p>
+                <p className="mt-1.5 text-sm text-text-secondary">Focus on understanding the overall meaning.</p>
+              </Card>
+            </div>
           ) : (
             <div className="space-y-3">
               <div className="rounded-lg border border-warning/20 bg-warning/5 p-4 text-center">
