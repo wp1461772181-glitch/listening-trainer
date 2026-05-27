@@ -31,29 +31,29 @@ export default function AuthForm() {
 
   return (
     <div className="flex min-h-[60vh] items-center justify-center">
-      <div className="w-full max-w-sm rounded-2xl glass p-8 animate-fade-in-up">
-        <h2 className="mb-2 text-center text-2xl font-bold text-white tracking-tight">
+      <div className="w-full max-w-sm rounded-2xl border border-border bg-surface p-8 shadow-sm animate-fade-in-up">
+        <h2 className="mb-2 text-center text-2xl font-bold text-text tracking-tight">
           {isRegister ? 'Create Account' : 'Sign In'}
         </h2>
-        <p className="mb-6 text-center text-sm text-aurora-muted">
+        <p className="mb-6 text-center text-sm text-text-secondary">
           {isRegister ? 'Start your listening practice journey' : 'Continue your listening practice'}
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-aurora-text">Email</label>
+            <label className="mb-1.5 block text-sm font-medium text-text">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
               placeholder="you@example.com"
-              className="w-full rounded-xl border border-aurora-border bg-aurora-surface/60 px-4 py-3 text-sm text-aurora-text placeholder:text-aurora-muted/50 focus:border-aurora-violet/50 focus:outline-none focus:ring-2 focus:ring-aurora-violet/10 transition-all"
+              className="w-full rounded-xl border border-border bg-bg px-4 py-3 text-sm text-text placeholder:text-text-tertiary focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
             />
           </div>
 
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-aurora-text">Password</label>
+            <label className="mb-1.5 block text-sm font-medium text-text">Password</label>
             <input
               type="password"
               value={password}
@@ -61,18 +61,18 @@ export default function AuthForm() {
               required
               minLength={6}
               placeholder="Min 6 characters"
-              className="w-full rounded-xl border border-aurora-border bg-aurora-surface/60 px-4 py-3 text-sm text-aurora-text placeholder:text-aurora-muted/50 focus:border-aurora-violet/50 focus:outline-none focus:ring-2 focus:ring-aurora-violet/10 transition-all"
+              className="w-full rounded-xl border border-border bg-bg px-4 py-3 text-sm text-text placeholder:text-text-tertiary focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
             />
           </div>
 
           {error && (
-            <div className="rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
+            <div className="rounded-lg bg-error/10 border border-error/20 px-4 py-3 text-sm text-error">
               {error}
             </div>
           )}
 
           {message && (
-            <div className="rounded-lg bg-aurora-emerald/10 border border-aurora-emerald/20 px-4 py-3 text-sm text-aurora-emerald">
+            <div className="rounded-lg bg-success/10 border border-success/20 px-4 py-3 text-sm text-success">
               {message}
             </div>
           )}
@@ -80,7 +80,7 @@ export default function AuthForm() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-xl bg-gradient-to-r from-aurora-violet to-violet-600 py-3 text-sm font-semibold text-white transition-all duration-300 hover:glow-violet active:scale-[0.98] disabled:opacity-50"
+            className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-white hover:bg-primary-hover transition-all active:scale-[0.99] disabled:opacity-50"
           >
             {submitting ? 'Loading...' : isRegister ? 'Create Account' : 'Sign In'}
           </button>
@@ -88,7 +88,7 @@ export default function AuthForm() {
 
         <button
           onClick={() => { setIsRegister(!isRegister); setError(''); setMessage(''); }}
-          className="mt-5 w-full text-center text-sm text-aurora-muted hover:text-aurora-violet transition-colors duration-200"
+          className="mt-5 w-full text-center text-sm text-text-secondary hover:text-primary transition-colors duration-200"
         >
           {isRegister ? 'Already have an account? Sign in' : "Don't have an account? Create one"}
         </button>
