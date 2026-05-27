@@ -175,7 +175,7 @@ export async function apiDeleteCustomLesson(lessonKey: string): Promise<void> {
 }
 
 export async function apiChangePassword(currentPassword: string, newPassword: string): Promise<void> {
-  await request<void>('/api/auth/change-password', {
+  await request<void>('/api/users/change-password', {
     method: 'POST',
     body: JSON.stringify({ currentPassword, newPassword }),
   });

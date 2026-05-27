@@ -44,6 +44,17 @@ public class AuthController {
     public ResponseEntity<?> me(@AuthenticationPrincipal User user) {
         return ResponseEntity.ok(Map.of("email", user.getEmail()));
     }
+}
+
+@RestController
+@RequestMapping("/api/users")
+class UserController {
+
+    private final AuthService authService;
+
+    public UserController(AuthService authService) {
+        this.authService = authService;
+    }
 
     @PostMapping("/change-password")
     public ResponseEntity<?> changePassword(@Valid @RequestBody ChangePasswordRequest request,
