@@ -5,6 +5,8 @@ import { compareTexts, calculateScore, type DiffToken } from '../utils/compare';
 import { getNextLessonId, getLessonById } from '../data/lessons';
 import AudioControls from './AudioControls';
 import ResultPanel from './ResultPanel';
+import Card from './ui/Card';
+import Badge from './ui/Badge';
 
 type DGStage = 'prep' | 'listen1' | 'listen2' | 'reconstruct' | 'result';
 
@@ -32,6 +34,25 @@ function extractKeywords(sentence: string): string[] {
     .map((w) => w.toLowerCase())
     .filter((w, i, arr) => arr.indexOf(w) === i)
     .slice(0, 8);
+}
+
+const stages: DGStage[] = ['prep', 'listen1', 'listen2', 'reconstruct', 'result'];
+
+const stageLabels: Record<DGStage, string> = {
+  prep: 'Prepare',
+  listen1: 'Listen (no writing)',
+  listen2: 'Take Notes',
+  reconstruct: 'Reconstruct',
+  result: 'Result',
+};
+
+function tierLabel(d: string): string {
+  switch (d) {
+    case 'daily': return 'Daily Life';
+    case 'campus': return 'Campus Life';
+    case 'academic': return 'Academic Lecture';
+    default: return '';
+  }
 }
 
 export default function Player({ lesson, onBack, onSelectLesson }: PlayerProps) {
@@ -147,7 +168,6 @@ export default function Player({ lesson, onBack, onSelectLesson }: PlayerProps) 
   const handleReveal = useCallback(() => setRevealed(true), []);
 
   const nextId = getNextLessonId(lesson.id);
-
   const stageIdx = stages.indexOf(stage);
 
   return (
@@ -166,18 +186,16 @@ export default function Player({ lesson, onBack, onSelectLesson }: PlayerProps) 
       <div className="flex items-center gap-3">
         <button
           onClick={onBack}
-          className="rounded-lg p-1.5 text-aurora-muted hover:text-white hover:bg-white/5 transition-all duration-200"
+          className="rounded-lg p-1.5 text-text-secondary hover:text-text hover:bg-bg-alt transition-all"
         >
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
         </button>
         <div>
-          <h2 className="text-xl font-bold text-white tracking-tight">{lesson.title}</h2>
-          <div className="flex items-center gap-2 text-xs text-aurora-violet">
-            <span className="font-medium">Dictogloss</span>
-            <span className="text-aurora-border">·</span>
-            <span>{tierLabel(lesson.difficulty)}</span>
+          <h2 className="text-xl font-bold text-text tracking-tight">{lesson.title}</h2>
+          <div className="flex items-center gap-2 text-xs">
+            <Badge variant="primary">{tierLabel(lesson.difficulty)}</Badge>
           </div>
         </div>
       </div>
@@ -189,293 +207,199 @@ export default function Player({ lesson, onBack, onSelectLesson }: PlayerProps) 
             <div
               className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold transition-all duration-500 ${
                 i < stageIdx
-                  ? 'bg-aurora-emerald text-white shadow-[0_0_12px_rgba(16,185,129,0.3)]'
+                  ? 'bg-success text-white shadow-sm'
                   : i === stageIdx
-                  ? 'bg-aurora-violet text-white animate-stage-pulse'
-                  : 'bg-aurora-border/40 text-aurora-muted'
+                  ? 'bg-primary text-white'
+                  : 'bg-bg-alt text-text-tertiary'
               }`}
             >
               {i + 1}
             </div>
             {i < 4 && (
-              <div className={`h-0.5 w-3 rounded-full transition-all duration-500 ${i < stageIdx ? 'bg-aurora-emerald' : 'bg-aurora-border/40'}`} />
+              <div className={`h-0.5 w-3 rounded-full transition-all duration-500 ${i < stageIdx ? 'bg-success' : 'bg-border'}`} />
             )}
           </div>
         ))}
-        <span className="ml-2 text-xs font-medium text-aurora-muted">{stageLabels[stage]}</span>
+        <span className="ml-2 text-xs font-medium text-text-secondary">{stageLabels[stage]}</span>
       </div>
 
       {/* Stage content */}
       {stage === 'prep' && (
-        <PrepStage
-          lesson={lesson}
-          keywords={keywordList}
-          audioReady={audioReady}
-          onStart={handleStartListen}
-        />
+        <Card className="p-6 space-y-5 animate-fade-in-up">
+          <div>
+            <h3 className="text-lg font-bold text-text tracking-tight">Prepare to Listen</h3>
+            <p className="mt-2 text-sm leading-relaxed text-text-secondary">
+              You will hear the audio <strong className="text-text font-semibold">twice</strong>.
+              First, just listen without writing anything.
+              Then, take keyword notes while listening a second time.
+              Finally, reconstruct the full text <strong className="text-text font-semibold">from memory</strong>.
+            </p>
+          </div>
+
+          <div className="rounded-lg bg-primary-surface/50 p-4">
+            <h4 className="mb-1.5 text-sm font-semibold text-text">Topic</h4>
+            <p className="text-sm text-text-secondary">{lesson.hint}</p>
+          </div>
+
+          <div>
+            <h4 className="mb-2 text-sm font-semibold text-text">Key vocabulary to listen for</h4>
+            <div className="flex flex-wrap gap-2">
+              {keywordList.map((kw) => (
+                <Badge key={kw} variant="primary">{kw}</Badge>
+              ))}
+            </div>
+          </div>
+
+          <button
+            onClick={handleStartListen}
+            disabled={!audioReady}
+            className="w-full rounded-xl bg-primary py-3.5 font-semibold text-white hover:bg-primary-hover transition-all active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {audioReady ? 'Start Listening' : 'Preparing audio...'}
+          </button>
+        </Card>
       )}
 
       {(stage === 'listen1' || stage === 'listen2') && (
-        <ListenStage
-          stage={stage as 'listen1' | 'listen2'}
-          keywords={keywords}
-          onChangeKeywords={setKeywords}
-          isPlaying={isPlaying}
-          speed={speed}
-          listenCount={listenCount}
-          onTogglePlay={handleTogglePlay}
-          onReplay={handleReplay}
-          onChangeSpeed={handleChangeSpeed}
-          onNext={stage === 'listen1' ? handleGoToNotes : handleGoToReconstruct}
-        />
+        <div className="space-y-6 animate-fade-in-up">
+          <Card className="p-5">
+            <div className="flex items-center justify-between">
+              <AudioControls
+                isPlaying={isPlaying}
+                speed={speed}
+                onTogglePlay={handleTogglePlay}
+                onReplay={handleReplay}
+                onChangeSpeed={handleChangeSpeed}
+              />
+              <div className="text-center">
+                <div className="text-2xl font-extrabold text-text tabular-nums">{listenCount}</div>
+                <div className="text-xs text-text-secondary font-medium">plays</div>
+              </div>
+            </div>
+          </Card>
+
+          {stage === 'listen1' ? (
+            <Card className="border-dashed border-primary/20 py-10 text-center">
+              <div className="mb-3 flex justify-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-surface">
+                  <svg className="h-8 w-8 text-primary/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+                  </svg>
+                </div>
+              </div>
+              <p className="text-text font-medium">Just listen. Do not write anything.</p>
+              <p className="mt-1.5 text-sm text-text-secondary">Focus on understanding the overall meaning.</p>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              <div className="rounded-lg border border-warning/20 bg-warning/5 p-4 text-center">
+                <p className="text-sm font-medium text-warning">Take keyword notes while you listen. Write important words only — not the full text.</p>
+              </div>
+              <textarea
+                value={keywords}
+                onChange={(e) => setKeywords(e.target.value)}
+                placeholder="Type keywords as you listen...&#10;e.g., mitochondria, energy, ATP, oxidative"
+                rows={5}
+                className="w-full resize-none rounded-xl border border-border bg-bg p-4 text-sm leading-relaxed text-text placeholder:text-text-tertiary focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
+                autoFocus
+              />
+            </div>
+          )}
+
+          <button
+            onClick={stage === 'listen1' ? handleGoToNotes : handleGoToReconstruct}
+            className="w-full rounded-xl bg-primary py-3.5 font-semibold text-white hover:bg-primary-hover transition-all active:scale-[0.99]"
+          >
+            {stage === 'listen1' ? "I've Listened — Take Notes Now" : "I'm Done — Reconstruct from Memory"}
+          </button>
+        </div>
       )}
 
       {stage === 'reconstruct' && (
-        <ReconstructStage
-          keywords={keywords}
-          value={reconstruction}
-          onChange={setReconstruction}
-          onSubmit={handleSubmit}
-          onReplayAudio={handleReplay}
-          isPlaying={isPlaying}
-          speed={speed}
-          onTogglePlay={handleTogglePlay}
-          onChangeSpeed={handleChangeSpeed}
-        />
+        <div className="space-y-5 animate-fade-in-up">
+          {/* Mini audio bar */}
+          <Card className="flex items-center gap-3 px-4 py-2.5">
+            <button
+              onClick={handleTogglePlay}
+              className={`flex h-9 w-9 items-center justify-center rounded-full transition-all ${
+                isPlaying
+                  ? 'bg-warning text-white shadow-sm'
+                  : 'bg-bg-alt text-text-tertiary hover:text-text'
+              }`}
+            >
+              {isPlaying ? (
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 9v6m4-6v6" />
+                </svg>
+              ) : (
+                <svg className="h-4 w-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5.14v14.72a1 1 0 001.555.832l11.318-7.36a1 1 0 000-1.664L9.555 4.308A1 1 0 008 5.14z" />
+                </svg>
+              )}
+            </button>
+            <button
+              onClick={handleReplay}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-text-tertiary hover:text-primary hover:border-primary/50 transition-all"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+            <button
+              onClick={handleChangeSpeed}
+              className="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-text-secondary hover:text-primary hover:border-primary/50 transition-all"
+            >
+              {speed}x
+            </button>
+            <span className="ml-auto text-xs text-text-secondary">Replay if needed</span>
+          </Card>
+
+          {/* Your notes */}
+          {keywords.trim() && (
+            <Card className="p-4 border-warning/20 bg-warning/5">
+              <div className="mb-1.5 text-xs font-semibold text-warning uppercase tracking-wider">Your Notes</div>
+              <div className="text-sm leading-relaxed text-text">{keywords}</div>
+            </Card>
+          )}
+
+          {/* Reconstruction textarea */}
+          <div>
+            <div className="mb-2 text-sm font-semibold text-text">
+              Reconstruct the full text from memory
+            </div>
+            <textarea
+              value={reconstruction}
+              onChange={(e) => setReconstruction(e.target.value)}
+              placeholder="Write the complete text you heard, using your notes to help you remember..."
+              rows={8}
+              className="w-full resize-none rounded-xl border border-border bg-bg p-4 text-sm leading-relaxed text-text placeholder:text-text-tertiary focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
+              autoFocus
+            />
+          </div>
+
+          <button
+            onClick={handleSubmit}
+            disabled={!reconstruction.trim()}
+            className="w-full rounded-xl bg-primary py-3.5 font-semibold text-white hover:bg-primary-hover transition-all active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Submit & Compare
+          </button>
+        </div>
       )}
 
       {stage === 'result' && (
-        <ResultPanel
-          diff={diff}
-          score={score}
-          originalText={lesson.sentence}
-          onNext={nextId ? handleNext : null}
-          onRetry={handleRetry}
-          onReveal={handleReveal}
-          revealed={revealed}
-        />
-      )}
-    </div>
-  );
-}
-
-// ─── Stage components ────────────────────────────────────────────
-
-function PrepStage({ lesson, keywords, audioReady, onStart }: {
-  lesson: Lesson;
-  keywords: string[];
-  audioReady: boolean;
-  onStart: () => void;
-}) {
-  return (
-    <div className="space-y-6 rounded-2xl glass p-6 animate-fade-in-up">
-      <div>
-        <h3 className="text-lg font-bold text-white tracking-tight">Prepare to Listen</h3>
-        <p className="mt-2 text-sm leading-relaxed text-aurora-muted">
-          You will hear the audio <strong className="text-white font-semibold">twice</strong>.
-          First, just listen without writing anything.
-          Then, take keyword notes while listening a second time.
-          Finally, reconstruct the full text <strong className="text-white font-semibold">from memory</strong>.
-        </p>
-      </div>
-
-      <div className="rounded-xl bg-aurora-violet/5 border border-aurora-violet/10 p-4">
-        <h4 className="mb-1.5 text-sm font-semibold text-aurora-text">Topic</h4>
-        <p className="text-sm text-aurora-muted">{lesson.hint}</p>
-      </div>
-
-      <div>
-        <h4 className="mb-2 text-sm font-semibold text-aurora-text">Key vocabulary to listen for</h4>
-        <div className="flex flex-wrap gap-2">
-          {keywords.map((kw) => (
-            <span
-              key={kw}
-              className="rounded-full border border-aurora-violet/25 bg-aurora-violet/10 px-3.5 py-1.5 text-sm font-medium text-aurora-violet"
-            >
-              {kw}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      <button
-        onClick={onStart}
-        disabled={!audioReady}
-        className="w-full rounded-xl bg-gradient-to-r from-aurora-violet to-violet-600 py-3.5 font-semibold text-white transition-all duration-300 hover:glow-violet active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
-      >
-        {audioReady ? 'Start Listening' : 'Preparing audio...'}
-      </button>
-    </div>
-  );
-}
-
-function ListenStage({ stage, keywords, onChangeKeywords, isPlaying, speed, listenCount, onTogglePlay, onReplay, onChangeSpeed, onNext }: {
-  stage: 'listen1' | 'listen2';
-  keywords: string;
-  onChangeKeywords: (v: string) => void;
-  isPlaying: boolean;
-  speed: number;
-  listenCount: number;
-  onTogglePlay: () => void;
-  onReplay: () => void;
-  onChangeSpeed: () => void;
-  onNext: () => void;
-}) {
-  return (
-    <div className="space-y-6 animate-fade-in-up">
-      <div className="flex items-center justify-between rounded-2xl glass p-5">
-        <AudioControls
-          isPlaying={isPlaying}
-          speed={speed}
-          onTogglePlay={onTogglePlay}
-          onReplay={onReplay}
-          onChangeSpeed={onChangeSpeed}
-        />
-        <div className="text-center">
-          <div className="text-2xl font-extrabold text-white tabular-nums">{listenCount}</div>
-          <div className="text-xs text-aurora-muted font-medium">plays</div>
-        </div>
-      </div>
-
-      {stage === 'listen1' ? (
-        <div className="rounded-2xl glass border-dashed border-aurora-violet/20 p-10 text-center">
-          <div className="mb-3 flex justify-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-aurora-violet/10">
-              <svg className="h-8 w-8 text-aurora-violet/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
-              </svg>
-            </div>
-          </div>
-          <p className="text-aurora-text font-medium">Just listen. Do not write anything.</p>
-          <p className="mt-1.5 text-sm text-aurora-muted">Focus on understanding the overall meaning.</p>
-        </div>
-      ) : (
-        <div>
-          <div className="mb-4 rounded-xl border border-aurora-amber/20 bg-aurora-amber/5 p-4 text-center">
-            <p className="text-sm font-medium text-aurora-amber">Take keyword notes while you listen. Write down important words only — not the full text.</p>
-          </div>
-          <textarea
-            value={keywords}
-            onChange={(e) => onChangeKeywords(e.target.value)}
-            placeholder="Type keywords as you listen...&#10;e.g., mitochondria, energy, ATP, oxidative"
-            rows={5}
-            className="w-full resize-none rounded-xl border border-aurora-border bg-aurora-surface/60 p-4 text-sm leading-relaxed text-aurora-text placeholder:text-aurora-muted/50 focus:border-aurora-amber/50 focus:outline-none focus:ring-2 focus:ring-aurora-amber/10 transition-all"
-            autoFocus
+        <div className="animate-fade-in-up">
+          <ResultPanel
+            diff={diff}
+            score={score}
+            originalText={lesson.sentence}
+            onNext={nextId ? handleNext : null}
+            onRetry={handleRetry}
+            onReveal={handleReveal}
+            revealed={revealed}
           />
         </div>
       )}
-
-      <button
-        onClick={onNext}
-        className="w-full rounded-xl bg-gradient-to-r from-aurora-violet to-violet-600 py-3.5 font-semibold text-white transition-all duration-300 hover:glow-violet active:scale-[0.98]"
-      >
-        {stage === 'listen1' ? "I've Listened — Take Notes Now" : "I'm Done — Reconstruct from Memory"}
-      </button>
     </div>
   );
-}
-
-function ReconstructStage({ keywords, value, onChange, onSubmit, onReplayAudio, isPlaying, speed, onTogglePlay, onChangeSpeed }: {
-  keywords: string;
-  value: string;
-  onChange: (v: string) => void;
-  onSubmit: () => void;
-  onReplayAudio: () => void;
-  isPlaying: boolean;
-  speed: number;
-  onTogglePlay: () => void;
-  onChangeSpeed: () => void;
-}) {
-  return (
-    <div className="space-y-6 animate-fade-in-up">
-      {/* Mini audio bar */}
-      <div className="flex items-center gap-3 rounded-xl glass px-4 py-2.5">
-        <button
-          onClick={onTogglePlay}
-          className={`flex h-9 w-9 items-center justify-center rounded-full transition-all duration-200 ${
-            isPlaying
-              ? 'bg-aurora-amber text-white shadow-[0_0_12px_rgba(245,158,11,0.3)]'
-              : 'bg-aurora-border/40 text-aurora-muted hover:bg-aurora-border hover:text-white'
-          }`}
-        >
-          {isPlaying ? (
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10 9v6m4-6v6" />
-            </svg>
-          ) : (
-            <svg className="h-4 w-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M8 5.14v14.72a1 1 0 001.555.832l11.318-7.36a1 1 0 000-1.664L9.555 4.308A1 1 0 008 5.14z" />
-            </svg>
-          )}
-        </button>
-        <button
-          onClick={onReplayAudio}
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-aurora-border text-aurora-muted hover:text-aurora-violet hover:border-aurora-violet/50 transition-all duration-200"
-        >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-        </button>
-        <button
-          onClick={onChangeSpeed}
-          className="rounded-md border border-aurora-border px-2.5 py-1 text-xs font-medium text-aurora-muted hover:text-aurora-violet hover:border-aurora-violet/50 transition-all duration-200"
-        >
-          {speed}x
-        </button>
-        <span className="ml-auto text-xs text-aurora-muted">Replay if needed</span>
-      </div>
-
-      {/* Your notes */}
-      {keywords.trim() && (
-        <div className="rounded-xl border border-aurora-amber/20 bg-aurora-amber/5 p-4">
-          <div className="mb-1.5 text-xs font-semibold text-aurora-amber uppercase tracking-wider">Your Notes</div>
-          <div className="text-sm leading-relaxed text-aurora-amber/80">{keywords}</div>
-        </div>
-      )}
-
-      {/* Reconstruction textarea */}
-      <div>
-        <div className="mb-2 text-sm font-semibold text-aurora-text">
-          Reconstruct the full text from memory
-        </div>
-        <textarea
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="Write the complete text you heard, using your notes to help you remember..."
-          rows={8}
-          className="w-full resize-none rounded-xl border border-aurora-border bg-aurora-surface/60 p-4 text-sm leading-relaxed text-aurora-text placeholder:text-aurora-muted/50 focus:border-aurora-violet/50 focus:outline-none focus:ring-2 focus:ring-aurora-violet/10 transition-all"
-          autoFocus
-        />
-      </div>
-
-      <button
-        onClick={onSubmit}
-        disabled={!value.trim()}
-        className="w-full rounded-xl bg-gradient-to-r from-aurora-violet to-violet-600 py-3.5 font-semibold text-white transition-all duration-300 hover:glow-violet active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
-      >
-        Submit & Compare
-      </button>
-    </div>
-  );
-}
-
-// ─── Helpers ─────────────────────────────────────────────────────
-
-const stages: DGStage[] = ['prep', 'listen1', 'listen2', 'reconstruct', 'result'];
-
-const stageLabels: Record<DGStage, string> = {
-  prep: 'Prepare',
-  listen1: 'Listen (no writing)',
-  listen2: 'Take Notes',
-  reconstruct: 'Reconstruct',
-  result: 'Result',
-};
-
-function tierLabel(d: string): string {
-  switch (d) {
-    case 'daily': return 'Daily Life';
-    case 'campus': return 'Campus Life';
-    case 'academic': return 'Academic Lecture';
-    default: return '';
-  }
 }

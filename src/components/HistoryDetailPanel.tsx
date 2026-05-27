@@ -1,11 +1,8 @@
 import { useState, useEffect } from 'react';
 import { apiGetProgressDetail, type PracticeDetail } from '../lib/api';
 import type { DiffToken } from '../utils/compare';
-
-interface HistoryDetailPanelProps {
-  progressId: number;
-  onBack: () => void;
-}
+import Badge from './ui/Badge';
+import Card from './ui/Card';
 
 const stageLabels = ['1. Prepare', '2. First Listen', '3. Take Notes', '4. Reconstruct', '5. Result'];
 
@@ -24,23 +21,23 @@ export default function HistoryDetailPanel({ progressId, onBack }: HistoryDetail
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-3">
-        <div className="h-8 w-8 rounded-full border-2 border-aurora-violet/30 border-t-aurora-violet animate-spin" />
-        <div className="text-sm text-aurora-muted">Loading details...</div>
+        <div className="h-8 w-8 rounded-full border-2 border-border border-t-primary animate-spin" />
+        <div className="text-sm text-text-secondary">Loading details...</div>
       </div>
     );
   }
 
   if (!detail) {
     return (
-      <div className="rounded-2xl glass py-16 text-center">
-        <p className="text-sm text-aurora-muted">Detail not found.</p>
+      <Card className="py-16 text-center">
+        <p className="text-sm text-text-secondary">Detail not found.</p>
         <button
           onClick={onBack}
-          className="mt-4 rounded-xl glass px-6 py-2 text-sm text-aurora-violet hover:border-aurora-violet/40 transition-all"
+          className="mt-4 rounded-lg border border-border bg-surface px-6 py-2 text-sm text-text hover:bg-bg-alt transition-all"
         >
           Go Back
         </button>
-      </div>
+      </Card>
     );
   }
 
@@ -51,9 +48,9 @@ export default function HistoryDetailPanel({ progressId, onBack }: HistoryDetail
 
   const grade = detail.score >= 80 ? 'great' : detail.score >= 50 ? 'good' : 'keep';
   const gradeConfig = {
-    great: { label: 'Great job!', color: 'text-aurora-emerald', ring: 'ring-aurora-emerald/30', bg: 'bg-aurora-emerald/10' },
-    good: { label: 'Good effort!', color: 'text-aurora-amber', ring: 'ring-aurora-amber/30', bg: 'bg-aurora-amber/10' },
-    keep: { label: 'Keep trying!', color: 'text-red-400', ring: 'ring-red-400/30', bg: 'bg-red-500/10' },
+    great: { label: 'Great job!', color: 'text-success', bg: 'bg-success/10', border: 'border-success/20' },
+    good: { label: 'Good effort!', color: 'text-warning', bg: 'bg-warning/10', border: 'border-warning/20' },
+    keep: { label: 'Keep trying!', color: 'text-error', bg: 'bg-error/10', border: 'border-error/20' },
   }[grade];
 
   return (
@@ -62,49 +59,49 @@ export default function HistoryDetailPanel({ progressId, onBack }: HistoryDetail
       <div className="flex items-center gap-3 mb-4">
         <button
           onClick={onBack}
-          className="rounded-lg p-1.5 text-aurora-muted hover:text-white hover:bg-white/5 transition-all"
+          className="rounded-lg p-1.5 text-text-secondary hover:text-text hover:bg-bg-alt transition-all"
         >
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
         </button>
         <div>
-          <h2 className="text-xl font-bold text-white tracking-tight">Practice Detail</h2>
-          <p className="text-xs text-aurora-muted">{detail.createdAt}</p>
+          <h2 className="text-xl font-bold text-text tracking-tight">Practice Detail</h2>
+          <p className="text-xs text-text-secondary">{detail.createdAt}</p>
         </div>
       </div>
 
       {/* Score card */}
-      <div className="flex items-center gap-5 rounded-2xl glass p-5">
-        <div className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl ${gradeConfig.bg} ring-2 ${gradeConfig.ring}`}>
+      <Card className={`flex items-center gap-5 p-5 ${gradeConfig.border}`}>
+        <div className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl ${gradeConfig.bg}`}>
           <span className={`text-3xl font-extrabold tracking-tight ${gradeConfig.color}`}>
             {detail.score}%
           </span>
         </div>
         <div>
           <div className={`text-xl font-bold ${gradeConfig.color}`}>{gradeConfig.label}</div>
-          <div className="mt-1 flex items-center gap-3 text-xs text-aurora-muted">
+          <div className="mt-1 flex items-center gap-3 text-xs text-text-secondary">
             <span>Played {detail.listenCount} times</span>
             {diff.length > 0 && (
               <>
-                <span className="text-aurora-border">&middot;</span>
+                <span className="text-text-tertiary">&middot;</span>
                 <span>{diff.filter((d) => d.status === 'correct').length} of {diff.length} words correct</span>
               </>
             )}
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Tab bar */}
-      <div className="flex rounded-xl glass p-1 gap-1">
+      <div className="flex rounded-lg border border-border bg-surface p-1 gap-1">
         {(['overview', 'notes', 'reconstruction', 'comparison'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`flex-1 rounded-lg py-2 text-xs font-medium transition-all ${
+            className={`flex-1 rounded-md py-2 text-xs font-medium transition-all ${
               activeTab === tab
-                ? 'bg-aurora-violet text-white'
-                : 'text-aurora-muted hover:text-white'
+                ? 'bg-primary text-white'
+                : 'text-text-secondary hover:text-text'
             }`}
           >
             {{ overview: 'Overview', notes: 'Notes', reconstruction: 'Reconstruct', comparison: 'Comparison' }[tab]}
@@ -115,125 +112,122 @@ export default function HistoryDetailPanel({ progressId, onBack }: HistoryDetail
       {/* Tab content */}
       {activeTab === 'overview' && (
         <div className="space-y-3 animate-fade-in">
-          <div className="rounded-xl glass p-5">
-            <h3 className="mb-4 text-sm font-semibold text-white">Practice Process</h3>
+          <Card className="p-5">
+            <h3 className="mb-4 text-sm font-semibold text-text">Practice Process</h3>
             <div className="space-y-3">
               {stageLabels.map((label, i) => (
                 <div key={i} className="flex items-center gap-3">
                   <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                    i === 4 ? 'bg-aurora-violet text-white' : 'bg-aurora-border/30 text-aurora-muted'
+                    i === 4 ? 'bg-primary text-white' : 'bg-bg-alt text-text-tertiary'
                   }`}>
                     {i + 1}
                   </div>
-                  <span className="text-sm text-aurora-text">{label}</span>
-                  {i < 4 && <div className="ml-3 h-6 w-0.5 rounded bg-aurora-border/30" />}
+                  <span className="text-sm text-text">{label}</span>
+                  {i < 4 && <div className="ml-3 h-6 w-0.5 rounded bg-border" />}
                 </div>
               ))}
             </div>
-          </div>
+          </Card>
 
-          <div className="rounded-xl glass p-5">
-            <h3 className="mb-3 text-sm font-semibold text-white">Stats</h3>
+          <Card className="p-5">
+            <h3 className="mb-3 text-sm font-semibold text-text">Stats</h3>
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-lg bg-aurora-violet/5 p-3 text-center">
-                <div className="text-2xl font-bold text-aurora-violet">{detail.listenCount}</div>
-                <div className="text-xs text-aurora-muted">Audio Plays</div>
+              <div className="rounded-lg bg-primary-surface p-3 text-center">
+                <div className="text-2xl font-bold text-primary">{detail.listenCount}</div>
+                <div className="text-xs text-text-secondary">Audio Plays</div>
               </div>
-              <div className="rounded-lg bg-aurora-emerald/5 p-3 text-center">
-                <div className="text-2xl font-bold text-aurora-emerald">{detail.score}%</div>
-                <div className="text-xs text-aurora-muted">Final Score</div>
+              <div className="rounded-lg bg-success/5 p-3 text-center">
+                <div className="text-2xl font-bold text-success">{detail.score}%</div>
+                <div className="text-xs text-text-secondary">Final Score</div>
               </div>
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
       {activeTab === 'notes' && (
-        <div className="rounded-xl glass p-5 animate-fade-in">
-          <h3 className="mb-3 text-sm font-semibold text-aurora-amber">Your Keyword Notes</h3>
+        <Card className="p-5 animate-fade-in">
+          <h3 className="mb-3 text-sm font-semibold text-warning">Your Keyword Notes</h3>
           {detail.keywords ? (
-            <div className="rounded-lg border border-aurora-amber/20 bg-aurora-amber/5 p-4">
-              <p className="text-sm leading-relaxed text-aurora-amber/80 whitespace-pre-wrap">{detail.keywords}</p>
+            <div className="rounded-lg border border-warning/20 bg-warning/5 p-4">
+              <p className="text-sm leading-relaxed whitespace-pre-wrap">{detail.keywords}</p>
             </div>
           ) : (
-            <p className="text-sm text-aurora-muted italic">No notes were taken.</p>
+            <p className="text-sm text-text-secondary italic">No notes were taken.</p>
           )}
-        </div>
+        </Card>
       )}
 
       {activeTab === 'reconstruction' && (
-        <div className="rounded-xl glass p-5 animate-fade-in">
-          <h3 className="mb-3 text-sm font-semibold text-aurora-violet">Your Reconstruction</h3>
+        <Card className="p-5 animate-fade-in">
+          <h3 className="mb-3 text-sm font-semibold text-primary">Your Reconstruction</h3>
           {detail.reconstruction ? (
-            <div className="rounded-lg border border-aurora-violet/20 bg-aurora-violet/5 p-4">
-              <p className="text-sm leading-relaxed text-aurora-text whitespace-pre-wrap">{detail.reconstruction}</p>
+            <div className="rounded-lg border border-primary/20 bg-primary-surface/30 p-4">
+              <p className="text-sm leading-relaxed text-text whitespace-pre-wrap">{detail.reconstruction}</p>
             </div>
           ) : (
-            <p className="text-sm text-aurora-muted italic">No reconstruction text.</p>
+            <p className="text-sm text-text-secondary italic">No reconstruction text.</p>
           )}
-        </div>
+        </Card>
       )}
 
       {activeTab === 'comparison' && (
         <div className="space-y-4 animate-fade-in">
           {diff.length > 0 ? (
-            <div className="rounded-xl glass p-5">
-              <h3 className="mb-4 text-sm font-semibold text-white">Word-by-Word Comparison</h3>
+            <Card className="p-5">
+              <h3 className="mb-4 text-sm font-semibold text-text">Word-by-Word Comparison</h3>
               <div className="flex flex-wrap gap-x-2 gap-y-1.5">
                 {diff.map((token, i) => (
-                  <span
+                  <Badge
                     key={i}
-                    className={`rounded-md px-1.5 py-0.5 text-sm font-medium transition-all ${
-                      token.status === 'correct'
-                        ? 'bg-aurora-emerald/15 text-aurora-emerald'
-                        : token.status === 'wrong'
-                          ? 'bg-red-500/15 text-red-400 line-through'
-                          : token.status === 'missing'
-                            ? 'bg-aurora-amber/15 text-aurora-amber'
-                            : 'bg-aurora-border/50 text-aurora-muted'
-                    }`}
+                    variant={
+                      token.status === 'correct' ? 'success'
+                      : token.status === 'wrong' ? 'error'
+                      : token.status === 'missing' ? 'warning'
+                      : 'default'
+                    }
                   >
                     {token.word}
-                  </span>
+                  </Badge>
                 ))}
               </div>
-              <div className="mt-5 flex gap-4 text-xs">
+              <div className="mt-5 flex gap-4 text-xs text-text-secondary">
                 <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded bg-aurora-emerald/50" /> Correct
+                  <span className="h-2.5 w-2.5 rounded bg-success/50" /> Correct
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded bg-red-500/50" /> Wrong
+                  <span className="h-2.5 w-2.5 rounded bg-error/50" /> Wrong
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded bg-aurora-amber/50" /> Missing
+                  <span className="h-2.5 w-2.5 rounded bg-warning/50" /> Missing
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded bg-aurora-border/50" /> Extra
+                  <span className="h-2.5 w-2.5 rounded bg-border" /> Extra
                 </span>
               </div>
-            </div>
+            </Card>
           ) : (
-            <div className="rounded-xl glass p-5 text-center">
-              <p className="text-sm text-aurora-muted">No comparison data available.</p>
-            </div>
+            <Card className="p-5 text-center">
+              <p className="text-sm text-text-secondary">No comparison data available.</p>
+            </Card>
           )}
 
           {detail.reconstruction && diff.length > 0 && (
-            <div className="rounded-xl glass p-5">
-              <h3 className="mb-3 text-sm font-semibold text-white">Side by Side</h3>
+            <Card className="p-5">
+              <h3 className="mb-3 text-sm font-semibold text-text">Side by Side</h3>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <div className="mb-1 text-xs font-semibold text-aurora-emerald">Your Input</div>
-                  <div className="rounded-lg bg-aurora-emerald/5 border border-aurora-emerald/20 p-3">
-                    <p className="text-sm leading-relaxed text-aurora-text whitespace-pre-wrap">
+                  <div className="mb-1 text-xs font-semibold text-success">Your Input</div>
+                  <div className="rounded-lg border border-success/20 bg-success/5 p-3">
+                    <p className="text-sm leading-relaxed text-text whitespace-pre-wrap">
                       {detail.reconstruction}
                     </p>
                   </div>
                 </div>
                 <div>
-                  <div className="mb-1 text-xs font-semibold text-aurora-amber">Expected</div>
-                  <div className="rounded-lg bg-aurora-amber/5 border border-aurora-amber/20 p-3">
-                    <p className="text-sm leading-relaxed text-aurora-text whitespace-pre-wrap">
+                  <div className="mb-1 text-xs font-semibold text-warning">Expected</div>
+                  <div className="rounded-lg border border-warning/20 bg-warning/5 p-3">
+                    <p className="text-sm leading-relaxed text-text whitespace-pre-wrap">
                       {diff
                         .filter((d) => d.status !== 'extra')
                         .map((d) => d.word)
@@ -242,10 +236,15 @@ export default function HistoryDetailPanel({ progressId, onBack }: HistoryDetail
                   </div>
                 </div>
               </div>
-            </div>
+            </Card>
           )}
         </div>
       )}
     </div>
   );
+}
+
+interface HistoryDetailPanelProps {
+  progressId: number;
+  onBack: () => void;
 }
