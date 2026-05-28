@@ -1086,16 +1086,19 @@ public class PracticeService {
     private final LessonSentenceMapper sentenceMapper;
     private final PracticeRecordMapper recordMapper;
     private final PracticeAnswerMapper answerMapper;
+    private final UserProgressSummaryMapper summaryMapper;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public PracticeService(LessonMapper lessonMapper,
                            LessonSentenceMapper sentenceMapper,
                            PracticeRecordMapper recordMapper,
-                           PracticeAnswerMapper answerMapper) {
+                           PracticeAnswerMapper answerMapper,
+                           UserProgressSummaryMapper summaryMapper) {
         this.lessonMapper = lessonMapper;
         this.sentenceMapper = sentenceMapper;
         this.recordMapper = recordMapper;
         this.answerMapper = answerMapper;
+        this.summaryMapper = summaryMapper;
     }
 
     /**
@@ -1224,7 +1227,23 @@ public class PracticeService {
         LambdaQueryWrapper<UserProgressSummary> sw = new LambdaQueryWrapper<>();
         sw.eq(UserProgressSummary::getUserId, userId)
           .eq(UserProgressSummary::getLessonId, String.valueOf(lessonId));
-        UserProgressSummary summary = null; // Need mapper for this
+        UserProgressSummary summary = summaryMapper.selectOne(sw);
+        if (summary == null) {
+            summary = new UserProgressSummary();
+            summary.setUserId(userId);
+            summary.setLessonId(String.valueOf(lessonId));
+            summary.setLatestScore(avgScore);
+            summary.setBestScore(avgScore);
+            summary.setTotalAttempts(1);
+            summary.setLastDate(java.time.LocalDate.now());
+            summaryMapper.insert(summary);
+        } else {
+            summary.setLatestScore(avgScore);
+            summary.setBestScore(Math.max(summary.getBestScore(), avgScore));
+            summary.setTotalAttempts(summary.getTotalAttempts() + 1);
+            summary.setLastDate(java.time.LocalDate.now());
+            summaryMapper.updateById(summary);
+        }
 
         return new PracticeCompleteResponse(record.getId(), avgScore);
     }
@@ -3138,18 +3157,39 @@ In `src/routes/HistoryPage.tsx`, update the history item click to navigate to th
 ```typescript
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { apiGetHistory } from '../lib/api';
-import type { HistoryRow } from '../lib/api';
+import { apiGetReviewDetail } from '../lib/api';
+import type { ReviewDetail } from '../types';
 import Card from '../components/ui/Card';
 
 export default function HistoryPage() {
   const navigate = useNavigate();
-  const [history, setHistory] = useState<HistoryRow[]>([]);
+  const [records, setRecords] = useState<ReviewDetail[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    apiGetHistory()
-      .then(setHistory)
+    // Fetch history by getting practice records list first
+    // For now, show the most recent records from the new practice_record table
+    fetch('/api/progress/history', {
+      headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` },
+    })
+      .then(r => r.json())
+      .then(data => {
+        // If data is new format (ReviewDetail array), use directly
+        if (data.length > 0 && data[0].sentences) {
+          setRecords(data);
+        } else {
+          // Old format: convert to minimal review detail
+          setRecords(data.map((r: any) => ({
+            recordId: r.id,
+            lessonId: r.lessonId,
+            lessonTitle: `Lesson ${r.lessonId}`,
+            score: r.score,
+            listenCount: 0,
+            completedAt: r.date,
+            sentences: [],
+          })));
+        }
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
@@ -3166,24 +3206,24 @@ export default function HistoryPage() {
     <div className="space-y-4 animate-fade-in-up">
       <h2 className="text-2xl font-bold text-text tracking-tight">Practice History</h2>
 
-      {history.length === 0 ? (
+      {records.length === 0 ? (
         <Card className="py-16 text-center">
           <p className="text-sm text-text-secondary">No practice records yet.</p>
         </Card>
       ) : (
         <div className="space-y-2">
-          {history.map((row, idx) => (
+          {records.map((row, idx) => (
             <button
-              key={row.id}
-              onClick={() => navigate(`/history/${row.id}/review`)}
+              key={row.recordId}
+              onClick={() => navigate(`/history/${row.recordId}/review`)}
               className="flex items-center gap-4 w-full text-left rounded-xl border border-border bg-surface px-4 py-3 hover:-translate-y-[1px] hover:shadow-md transition-all animate-fade-in-up"
               style={{ animationDelay: `${idx * 0.04}s` }}
             >
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-semibold text-text">
-                  Record #{row.id}
+                  {row.lessonTitle}
                 </div>
-                <div className="text-xs text-text-secondary">{row.date}</div>
+                <div className="text-xs text-text-secondary">{row.completedAt}</div>
               </div>
               <div className={`text-lg font-bold ${
                 row.score >= 80 ? 'text-success' : row.score >= 50 ? 'text-warning' : 'text-error'
@@ -3205,7 +3245,7 @@ Note: `apiGetHistory` currently returns `HistoryRow[]` with `{id, lessonId, scor
 
 ```bash
 cd D:\listening-trainer
-git add src/context/ProgressContext.tsx src/routes/HistoryPage.tsx
+git add src/routes/HistoryPage.tsx
 git commit -m "feat: update HistoryPage to navigate to new review page"
 ```
 
