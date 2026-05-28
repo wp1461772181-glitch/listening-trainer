@@ -71,14 +71,14 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Difficulty cards */}
+      {/* Lesson categories */}
       <div>
-        <h2 className="text-sm font-semibold text-text-secondary mb-3 uppercase tracking-wider">Lessons</h2>
+        <h2 className="text-sm font-semibold text-text-secondary mb-3 uppercase tracking-wider">Lesson Categories</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {(['daily', 'campus', 'academic'] as const).map((d) => (
             <button
               key={d}
-              onClick={() => navigate(`/lessons/${d}`)}
+              onClick={() => navigate('/lessons')}
               className="rounded-xl border border-border bg-surface p-5 text-left transition-all duration-200 hover:-translate-y-[1px] hover:shadow-md hover:border-border-strong"
             >
               <div className="text-lg font-bold text-text">{tierTitle(d)}</div>
@@ -109,10 +109,10 @@ export default function HomePage() {
           Practice History
         </button>
         <button
-          onClick={() => navigate('/custom')}
+          onClick={() => navigate('/lessons/new')}
           className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover transition-all"
         >
-          + Create Custom Lesson
+          + Create New Lesson
         </button>
       </div>
     </div>
