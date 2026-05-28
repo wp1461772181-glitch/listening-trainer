@@ -1,11 +1,6 @@
----
-name: listening-trainer
-description: "Academic Listening Trainer - dictation-based English practice app, dual-branch: TS+Supabase (master) and Java+Spring Boot (java)"
-metadata: 
-  type: project
----
+# Listening Trainer 项目
 
-Listening Trainer — 英语听力听写练习网站。3 个难度等级（Daily Life / Campus Life / Academic Lectures），5 阶段 Dictogloss 流程（Prep → Listen1 → Notes → Reconstruct → Result）。
+英语听力填空练习 SPA。用户上传英文文本 → CoreNLP 自动分句挖空 → 校对后生成 TTS → 逐句填空练习 → 回顾模式（原文+答案双栏+音频同步高亮）。
 
 **GitHub**: https://github.com/wp1461772181-glitch/listening-trainer
 **Vercel**: https://listening-trainer-xi.vercel.app
@@ -14,154 +9,187 @@ Listening Trainer — 英语听力听写练习网站。3 个难度等级（Daily
 
 ---
 
-## 双分支架构
+## 当前状态
 
-### java 分支（当前主力，在线可用）
-- 前端: React 18 + TypeScript + Vite + TailwindCSS v4
-- 后端: Spring Boot 3.3 + MyBatis-Plus 3.5.7 + JWT
-- 数据库: MySQL 8.0 (ECS Docker)
-- 前端部署: Vercel (静态站，实际从 master 分支部署)
-- 后端部署: 阿里云 ECS 121.40.47.186:8080 (Docker)
-- 工作流: java 分支开发 → merge 到 master → Vercel 自动/手动部署
+- **在线版本 (Vercel)**: 旧版 Dictogloss 模式（master 分支）
+- **开发版本 (java 分支)**: 逐句填空模式，**已推送 20 个 commit，待部署**
+- java 分支含全新前后端代码，尚未 merge 到 master
 
-### master 分支（Vercel 部署源）
-- Vercel 从 master 部署，java 完成后 merge 过来
+---
+
+## 架构 (java 分支)
+
+### 前端: React 18 + TypeScript + Vite + TailwindCSS v4
+- 部署: Vercel 静态站
+- `.env.production` — `VITE_API_URL=` 空值，走相对路径
+- `vite.config.ts` — proxy `/api/*` 和 `/audio/*` → localhost:8080
+
+### 后端: Spring Boot 3.3 + MyBatis-Plus 3.5.7 + JWT
+- 部署: 阿里云 ECS Docker
+- `schema.sql` 自动建表（H2 dev / MySQL prod）
+- Stanford CoreNLP 4.5.7 分句+词性标注（名词NN*、动词VB*挖空）
+
+### 数据库: MySQL 8.0 (ECS Docker)
 
 ---
 
 ## ECS 服务器 (Docker 部署)
 
 **服务器**: 121.40.47.186 (阿里云 ECS 杭州, 2核2G)
-**SSH**: root@121.40.47.186, 密码 `Wp1461772181.`（用 Node.js ssh2 库连接）
+**SSH**: root@121.40.47.186, 密码 `Wp1461772181.`（Node.js ssh2 连接）
 
 **容器**:
-- `listening-trainer` — Spring Boot 后端 (listening-trainer:latest)
+- `listening-trainer` — Spring Boot 后端
   - 环境变量: `SPRING_PROFILES_ACTIVE=mysql`, `APP_CORS_ORIGINS=...`
   - 网络: `--network app-network`, 端口: `-p 8080:8080`
-- `mysql` — MySQL 8.0 (mysql:8.0)
+  - 音频文件: `public/audio/lessons/{lessonId}/{idx}.mp3`（需 volume mount 持久化）
+- `mysql` — MySQL 8.0
   - `MYSQL_ROOT_PASSWORD=root`, `MYSQL_DATABASE=listening_trainer`
 
-**部署脚本**:
-- `upload_backend.cjs` — SFTP 上传指定文件 + Docker rebuild + run
-- `deploy_changes.cjs` — git pull + Docker rebuild + run
+**部署脚本**: `deploy_changes.cjs` — git pull + Docker rebuild + run
 
-**重启命令**:
-```bash
-docker stop listening-trainer && docker rm listening-trainer
-docker run -d --name listening-trainer --network app-network -p 8080:8080 \
-  -e SPRING_PROFILES_ACTIVE=mysql \
-  -e APP_CORS_ORIGINS="http://localhost:*,http://121.40.47.186,http://121.40.47.186:*,https://listening-trainer-xi.vercel.app,https://*.vercel.app" \
-  listening-trainer:latest
-```
-
-⚠️ 不要用 `--link` 参数。MySQL 通过 `app-network` 通信，jdbc 地址用 `mysql:3306` 不是 localhost。
+⚠️ MySQL 通过 `app-network` 通信，jdbc 地址用 `mysql:3306` 不是 localhost。
 
 ---
 
 ## Vercel 部署
 
 - Scope: `alan-yeager-s-projects`
-- 有时 push 后不会自动部署，需手动: `npx vercel --prod --yes --scope alan-yeager-s-projects`
-- Vercel Dashboard 里不要设 `VITE_API_URL` 环境变量
+- 从 **master** 分支部署
+- `vercel.json` — `/api/(.*)` → `http://121.40.47.186:8080/api/$1`
+- 有时 push 后不自动部署，需手动: `npx vercel --prod --yes --scope alan-yeager-s-projects`
 
 ---
 
-## 网络架构
+## 数据库表（MySQL）
 
-Vercel (HTTPS) → `/api/*` → vercel.json rewrites → ECS (HTTP 8080) → 后端
+### 旧表（保留兼容）
+```sql
+users (id, email, password)
+user_progress (id, user_id, lesson_id, score, date)
+user_progress_summary (id, user_id, lesson_id, latest_score, best_score, total_attempts, last_date)
+practice_details (id, progress_id, user_id, lesson_id, keywords, reconstruction, diff_json, listen_count, score, created_at)
+```
 
-**关键文件**:
-- `.env.production` — `VITE_API_URL=` 空值
-- `vercel.json` — `/api/(.*)` → `http://121.40.47.186:8080/api/$1`
-- `src/lib/api.ts` — `API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'`
+### 新表（java 分支新增）
+```sql
+lesson (id, user_id, title, difficulty, hint, status, created_at, updated_at)
+  -- status: drafting / generating / ready / failed
+lesson_sentence (id, lesson_id, sentence_index, text, audio_path, voice, blanks_json, created_at)
+  -- blanks_json: [{word, position, length}] 词性标注挖空
+practice_record (id, lesson_id, user_id, score, listen_count, completed_at)
+practice_answer (id, record_id, sentence_id, sentence_text, user_answer, blanks_json)
+  -- sentence_text 快照保证历史记录不被修改
+```
+
+DDL 在 `backend/src/main/resources/schema.sql`
 
 ---
 
 ## API 接口
 
+### 认证
 | 方法 | 路径 | 认证 | 说明 |
 |------|------|------|------|
 | POST | /api/auth/register | 无 | 注册 |
 | POST | /api/auth/login | 无 | 登录 |
 | GET | /api/auth/me | JWT | 当前用户 |
-| GET | /api/lessons | 无 | 内置课程列表 |
+
+### 课程管理
+| 方法 | 路径 | 认证 | 说明 |
+|------|------|------|------|
+| POST | /api/lessons | JWT | 创建课程（文本→分句→挖空→drafting） |
+| PUT | /api/lessons/{id}/sentences | JWT | 更新句子（用户校对编辑） |
+| POST | /api/lessons/{id}/generate | JWT | 生成 TTS 音频（drafting→ready） |
+| GET | /api/lessons | JWT | 课程列表 |
+| GET | /api/lessons/{id} | JWT | 课程详情+句子 |
+| DELETE | /api/lessons/{id} | JWT | 删除课程（含音频文件） |
+
+### 练习
+| 方法 | 路径 | 认证 | 说明 |
+|------|------|------|------|
+| GET | /api/lessons/{lessonId}/practice?sentenceIdx=N | JWT | 获取单句练习信息 |
+| POST | /api/lessons/{lessonId}/practice/submit | JWT | 提交单句答案 |
+| POST | /api/lessons/{lessonId}/practice/complete | JWT | 完成练习，保存所有答案 |
+
+### 回顾/历史
+| 方法 | 路径 | 认证 | 说明 |
+|------|------|------|------|
 | GET | /api/progress | JWT | 用户进度汇总 |
-| POST | /api/progress | JWT | 保存进度（同时写 user_progress + practice_details） |
 | GET | /api/progress/history | JWT | 全部练习历史 |
 | GET | /api/progress/{lessonId}/history | JWT | 指定课程历史 |
-| GET | /api/progress/detail/{progressId} | JWT | 单次练习详情 |
-| GET | /api/custom-lessons | JWT | 自定义课程列表 |
-| POST | /api/custom-lessons | JWT | 创建自定义课程 |
-| DELETE | /api/custom-lessons/{key} | JWT | 删除自定义课程 |
-| GET | /api/tts?text=...&spd=3 | 无 | 百度 TTS 音频代理（后端从 fanyi.baidu.com 获取） |
+| GET | /api/progress/detail/{progressId} | JWT | 练习详情（新格式优先，旧格式fallback） |
+
+### 静态文件
+| 路径 | 说明 |
+|------|------|
+| /audio/lessons/{lessonId}/{idx}.mp3 | 预生成的句子音频 |
 
 ---
 
-## 数据库表（MySQL, listening_trainer）
-
-```sql
-users (id, email, password)
-user_progress (id, user_id, lesson_id, score, attempts, best_score, date)
-practice_details (id, progress_id, lesson_id, keywords, reconstruction, diff_json, listen_count, score, created_at)
-user_progress_summary (VIEW)
-custom_lessons (id, user_id, lesson_key, title, difficulty, hint, sentence, voice, created_at)
-```
-
-⚠️ practice_details 在部署前的旧记录为空，点击历史详情会显示 "Detail not found"
-
----
-
-## 前端关键文件
+## 前端关键文件 (java 分支)
 
 | 文件 | 用途 |
 |------|------|
-| `src/types/index.ts` | 类型定义：Lesson, Difficulty, View |
-| `src/data/lessons.ts` | 18 节内置课程（含 audioPath） |
-| `src/components/Player.tsx` | Dictogloss 5 阶段播放器。TTS: `/api/tts`，retry 检查 readyState |
-| `src/components/CustomLessonForm.tsx` | 自定义课程 + checkSpacing 空格校验 + 中文标点检测 + checkGrammar |
-| `src/components/HistoryPanel.tsx` | 练习历史总览 |
-| `src/components/LessonHistoryPanel.tsx` | 每节课练习记录 |
-| `src/components/HistoryDetailPanel.tsx` | 单次练习详情（4 标签页） |
-| `src/lib/api.ts` | REST API 客户端 |
-| `src/utils/grammar.ts` | checkGrammar (LanguageTool), checkSpacing (本地空格/中文标点替换), normalizeText |
-| `src/utils/customLessons.ts` | 自定义课程 CRUD |
+| `src/types/index.ts` | 类型：Lesson, LessonSentence, ClozeBlank, ReviewDetail, LessonStatus |
+| `src/lib/api.ts` | REST API 客户端（课程/练习/回顾函数） |
+| `src/lib/router.tsx` | 路由：/lessons, /lessons/new, /player/:id, /history/:id/review |
+| `src/routes/PlayerPage.tsx` | 逐句填空练习页（音频→填空→Next→循环） |
+| `src/routes/LessonsPage.tsx` | 课程列表（状态徽章+操作按钮） |
+| `src/routes/LessonCreatePage.tsx` | 上传文本→校对句子→生成音频 |
+| `src/routes/ReviewPage.tsx` | 回顾页（左右分栏：原文+答案+音频同步高亮） |
+| `src/routes/HomePage.tsx` | 首页（统计+课程分类+创建入口） |
+| `src/routes/HistoryPage.tsx` | 练习历史总览 |
+| `src/components/ClozeRenderer.tsx` | 挖空渲染（输入框或结果展示） |
+| `src/components/SentenceEditor.tsx` | 句子校对（编辑/合并/删除） |
+| `src/components/StatusBadge.tsx` | 课程状态徽章（drafting/generating/ready/failed） |
+| `src/components/OriginalTextPanel.tsx` | 回顾左侧原文面板 |
+| `src/components/AnswerPanel.tsx` | 回顾右侧答案面板（错误标红） |
+| `src/components/HistoryPanel.tsx` | 练习历史（含后端课程） |
 | `src/context/AuthContext.tsx` | JWT token 管理 |
 | `src/context/ProgressContext.tsx` | 进度 REST API |
 
-## 后端关键文件
+---
+
+## 后端关键文件 (java 分支)
 
 | 文件 | 用途 |
 |------|------|
+| `config/WebConfig.java` | 静态音频文件服务 `/audio/**` |
+| `config/SecurityConfig.java` | permitAll: /api/auth/**, /api/lessons/**, /audio/**, /h2-console/** |
+| `controller/LessonController.java` | 课程 CRUD + TTS 生成 |
+| `controller/PracticeController.java` | 逐句练习 API |
+| `controller/ProgressController.java` | 回顾详情（新格式优先+旧格式fallback） |
 | `controller/AuthController.java` | 注册/登录/JWT |
-| `controller/LessonController.java` | 内置课程 |
-| `controller/CustomLessonController.java` | 自定义课程 CRUD |
-| `controller/ProgressController.java` | 进度保存 + 历史 + 详情 |
-| `controller/TtsController.java` | 百度 TTS 代理 `/api/tts` |
-| `service/ProgressService.java` | 进度业务（saveProgress 双表写入） |
-| `config/SecurityConfig.java` | permitAll: /api/auth/**, /api/lessons/**, /api/tts/**, /h2-console/** |
-| `config/CorsConfig.java` | CORS 读 `app.cors.origins` |
+| `service/LessonService.java` | 上传分句→校对→生成百度TTS音频 |
+| `service/PracticeService.java` | 练习逻辑+答案评分+回顾数据 |
+| `service/SentenceSplitter.java` | Stanford CoreNLP 分句+词性标注挖空 |
+| `service/ProgressService.java` | 旧进度逻辑+回顾代理 |
+| `entity/Lesson.java` | 课程实体 |
+| `entity/LessonSentence.java` | 句子实体 |
+| `entity/PracticeRecord.java` | 练习记录实体 |
+| `entity/PracticeAnswer.java` | 答案实体 |
+| `dto/*.java` | 8 个 DTO（Upload/Edit/Response/Practice/Review） |
+| `mapper/*.java` | MyBatis-Plus BaseMapper 接口 |
 
-## TTS 方案
+---
 
-**百度翻译 TTS**（后端代理）：
-- URL: `https://fanyi.baidu.com/gettts?lan=en&text=...&spd=3`
-- 免费，无需 API Key，英文可用
-- Google TTS 在国内被墙，不能用
-- 后端 TtsController 用 HttpURLConnection 代理请求，返回 audio/mpeg
+## 练习流程
 
-## 文本校验
+1. 用户上传英文文本 → 后端 CoreNLP 分句+挖空（名词/动词，最多4个/句）
+2. 用户校对句子（编辑/合并/删除/调整挖空）→ 确认
+3. 逐句调用百度 TTS 生成 MP3（每句独立文件）→ 状态变为 ready
+4. 练习：逐句播放音频 → 填空 → 检查 → Next → 循环
+5. 完成练习 → 保存所有答案 → 计算总分 → 更新 UserProgressSummary
+6. 回顾：左右双栏，左原文右答案，点击任意句子播放音频+高亮
 
-CustomLessonForm 输入时自动检测：
-- 中文标点符号（，。；：？！""''（））→ 替换为英文标点
-- 首尾多余空格
-- 多余空格/换行
-- 标点符号前后空格异常
-- 首字母大写
-- 检测到问题显示蓝色提示框 + 修复预览 + "Apply Fix" 一键应用
+---
 
 ## 已知问题
 
-- Google TTS 国内被墙，已切百度 TTS
+- Google TTS 国内被墙，已用百度 TTS
 - GitHub push 需代理（v2rayN HTTP 10808）
 - Vercel 有时不自动部署
 - 旧 practice_details 无数据（新练习会生成）
+- 旧版 Dictogloss 代码（Player.tsx 等）已删除，历史记录的 `practice_details` 通过 fallback 保持兼容
+- java 分支代码已推送但未部署到 ECS，待明天部署
