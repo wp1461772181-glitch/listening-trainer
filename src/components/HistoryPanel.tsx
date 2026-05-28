@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import type { Lesson } from '../types';
 import { lessons as builtInLessons } from '../data/lessons';
 import { fetchCustomLessons } from '../utils/customLessons';
+import { apiGetAllLessons } from '../lib/api';
 import { useProgress } from '../context/ProgressContext';
 import Badge from './ui/Badge';
 import Card from './ui/Card';
@@ -28,14 +29,17 @@ interface HistoryPanelProps {
 export default function HistoryPanel({ onSelectLesson }: HistoryPanelProps) {
   const { progress } = useProgress();
   const [customLessons, setCustomLessons] = useState<Lesson[]>([]);
+  const [backendLessons, setBackendLessons] = useState<Lesson[]>([]);
 
   useEffect(() => {
     fetchCustomLessons().then(setCustomLessons).catch(() => {});
+    apiGetAllLessons().then(setBackendLessons).catch(() => {});
   }, []);
 
   const lessonMap = new Map<string, Lesson>();
   for (const l of builtInLessons) lessonMap.set(l.id, l);
   for (const l of customLessons) lessonMap.set(l.id, l);
+  for (const l of backendLessons) lessonMap.set(String(l.id), l);
 
   const entries = Object.entries(progress).sort((a, b) => b[1].date.localeCompare(a[1].date));
   const totalAttempts = entries.reduce((sum, [, p]) => sum + p.attempts, 0);
