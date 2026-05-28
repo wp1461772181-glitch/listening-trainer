@@ -180,3 +180,91 @@ export async function apiChangePassword(currentPassword: string, newPassword: st
     body: JSON.stringify({ currentPassword, newPassword }),
   });
 }
+
+// ===== Lesson Management API =====
+
+import type { Lesson, ReviewDetail, LessonStatus } from '../types';
+
+export async function apiCreateLesson(data: {
+  title: string;
+  difficulty: string;
+  hint?: string;
+  text: string;
+  voice?: string;
+}): Promise<Lesson> {
+  return request<Lesson>('/api/lessons', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiUpdateLessonSentences(
+  lessonId: number,
+  sentences: { index: number; text: string; blanksJson: any[] }[]
+): Promise<Lesson> {
+  return request<Lesson>(`/api/lessons/${lessonId}/sentences`, {
+    method: 'PUT',
+    body: JSON.stringify(sentences),
+  });
+}
+
+export async function apiGenerateAudio(lessonId: number): Promise<Lesson> {
+  return request<Lesson>(`/api/lessons/${lessonId}/generate`, {
+    method: 'POST',
+  });
+}
+
+export async function apiGetAllLessons(): Promise<Lesson[]> {
+  return request<Lesson[]>('/api/lessons');
+}
+
+export async function apiGetLesson(lessonId: number): Promise<Lesson> {
+  return request<Lesson>(`/api/lessons/${lessonId}`);
+}
+
+export async function apiDeleteLesson(lessonId: number): Promise<void> {
+  return request<void>(`/api/lessons/${lessonId}`, {
+    method: 'DELETE',
+  });
+}
+
+// ===== Practice API =====
+
+export interface SentencePracticeInfo {
+  sentenceId: number;
+  index: number;
+  totalSentences: number;
+  audioPath: string;
+  blanks: { word: string; position: number; length: number }[];
+}
+
+export async function apiGetSentence(lessonId: number, sentenceIdx: number): Promise<SentencePracticeInfo> {
+  return request<SentencePracticeInfo>(`/api/lessons/${lessonId}/practice?sentenceIdx=${sentenceIdx}`);
+}
+
+export async function apiSubmitSentenceAnswer(
+  lessonId: number,
+  data: { sentenceId: number; userAnswer: string }
+): Promise<{ sentenceId: number; score: number; blanks: { word: string; correct: boolean; userAnswer: string }[] }> {
+  return request(`/api/lessons/${lessonId}/practice/submit`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiCompletePractice(
+  lessonId: number,
+  answers: { sentenceId: number; sentenceText: string; userAnswer: string; score: number; blanks: any[] }[]
+): Promise<{ recordId: number; score: number }> {
+  return request(`/api/lessons/${lessonId}/practice/complete`, {
+    method: 'POST',
+    body: JSON.stringify({ answers }),
+  });
+}
+
+// ===== Review API =====
+
+export async function apiGetReviewDetail(recordId: number): Promise<ReviewDetail> {
+  return request<ReviewDetail>(`/api/progress/detail/${recordId}`);
+}
+

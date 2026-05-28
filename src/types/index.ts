@@ -1,13 +1,29 @@
 export type Difficulty = 'daily' | 'campus' | 'academic';
+export type LessonStatus = 'drafting' | 'generating' | 'ready' | 'failed';
+
+export interface ClozeBlank {
+  word: string;
+  position: number;
+  length: number;
+}
+
+export interface LessonSentence {
+  id: number;
+  index: number;
+  text: string;
+  audioPath: string;
+  voice: 'male' | 'female';
+  blanks: ClozeBlank[];
+}
 
 export interface Lesson {
-  id: string;
-  difficulty: Difficulty;
+  id: number;
   title: string;
-  sentence: string;
+  difficulty: Difficulty;
   hint: string;
-  audioPath?: string;
-  voice?: 'male' | 'female';
+  status: LessonStatus;
+  createdAt?: string;
+  sentences: LessonSentence[];
 }
 
 export interface LessonProgress {
@@ -19,4 +35,31 @@ export interface LessonProgress {
 
 export interface ProgressMap {
   [lessonId: string]: LessonProgress;
+}
+
+export interface PracticeRecord {
+  id: number;
+  lessonId: number;
+  lessonTitle: string;
+  score: number;
+  listenCount: number;
+  completedAt: string;
+}
+
+export interface ReviewSentenceDetail {
+  sentenceId: number;
+  sentenceText: string;
+  audioPath: string;
+  userAnswer: string;
+  blanks: { word: string; correct: boolean; userAnswer: string }[];
+}
+
+export interface ReviewDetail {
+  recordId: number;
+  lessonId: number;
+  lessonTitle: string;
+  score: number;
+  listenCount: number;
+  completedAt: string;
+  sentences: ReviewSentenceDetail[];
 }
