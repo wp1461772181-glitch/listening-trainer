@@ -3,14 +3,12 @@ const conn = new Client();
 conn.on('ready', () => {
   console.log('Connected');
   const commands = [
-    // Fix the JPA settings conflict and pull fresh
     'cd /root/listening-trainer && git stash && git pull origin java 2>&1',
-    // Fix MySQL config for Docker (replace localhost with mysql)
     'cd /root/listening-trainer && sed -i "s/jdbc:mysql:\\/\\/localhost:3306/jdbc:mysql:\\/\\/mysql:3306/" backend/src/main/resources/application-mysql.properties 2>&1',
-    // Rebuild docker image with new code
+    'cd /root/listening-trainer && mkdir -p audio-data 2>&1',
     'cd /root/listening-trainer/backend && docker build -t listening-trainer . 2>&1',
     'docker rm -f listening-trainer 2>&1',
-    'docker run -d --name listening-trainer --network app-network -e SPRING_PROFILES_ACTIVE=mysql -e "APP_CORS_ORIGINS=http://localhost:*,http://121.40.47.186,http://121.40.47.186:*,https://listening-trainer-xi.vercel.app,https://*.vercel.app" -p 8080:8080 listening-trainer 2>&1',
+    'docker run -d --name listening-trainer --network app-network -v /root/listening-trainer/audio-data:/app/public/audio/lessons -e SPRING_PROFILES_ACTIVE=mysql -e "APP_CORS_ORIGINS=http://localhost:*,http://121.40.47.186,http://121.40.47.186:*,https://listening-trainer-xi.vercel.app,https://*.vercel.app" -p 8080:8080 listening-trainer 2>&1',
   ];
   let i = 0;
   function run() {
