@@ -4,11 +4,12 @@ import RootLayout from '../routes/RootLayout';
 import AuthPage from '../routes/AuthPage';
 import HomePage from '../routes/HomePage';
 import LessonsPage from '../routes/LessonsPage';
+import LessonCreatePage from '../routes/LessonCreatePage';
 import PlayerPage from '../routes/PlayerPage';
-import CustomLessonPage from '../routes/CustomLessonPage';
 import HistoryPage from '../routes/HistoryPage';
 import LessonHistoryPage from '../routes/LessonHistoryPage';
 import HistoryDetailPage from '../routes/HistoryDetailPage';
+import ReviewPage from '../routes/ReviewPage';
 import SettingsPage from '../routes/SettingsPage';
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
@@ -40,10 +41,18 @@ export function createAppRouter() {
       children: [
         { index: true, element: <HomePage /> },
         {
-          path: 'lessons/:difficulty',
+          path: 'lessons',
           element: (
             <AuthGuard>
               <LessonsPage />
+            </AuthGuard>
+          ),
+        },
+        {
+          path: 'lessons/new',
+          element: (
+            <AuthGuard>
+              <LessonCreatePage />
             </AuthGuard>
           ),
         },
@@ -52,14 +61,6 @@ export function createAppRouter() {
           element: (
             <AuthGuard>
               <PlayerPage />
-            </AuthGuard>
-          ),
-        },
-        {
-          path: 'custom',
-          element: (
-            <AuthGuard>
-              <CustomLessonPage />
             </AuthGuard>
           ),
         },
@@ -84,6 +85,14 @@ export function createAppRouter() {
           element: (
             <AuthGuard>
               <HistoryDetailPage />
+            </AuthGuard>
+          ),
+        },
+        {
+          path: 'history/:recordId/review',
+          element: (
+            <AuthGuard>
+              <ReviewPage />
             </AuthGuard>
           ),
         },
