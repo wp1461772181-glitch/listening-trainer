@@ -5,6 +5,7 @@ import com.listeningtrainer.dto.PracticeDetailResponse;
 import com.listeningtrainer.dto.ProgressHistoryResponse;
 import com.listeningtrainer.dto.ProgressRequest;
 import com.listeningtrainer.dto.ProgressResponse;
+import com.listeningtrainer.dto.ReviewDetailResponse;
 import com.listeningtrainer.entity.PracticeDetail;
 import com.listeningtrainer.entity.UserProgress;
 import com.listeningtrainer.entity.UserProgressSummary;
@@ -22,13 +23,16 @@ public class ProgressService {
     private final UserProgressMapper progressMapper;
     private final UserProgressSummaryMapper summaryMapper;
     private final PracticeDetailMapper detailMapper;
+    private final PracticeService practiceService;
 
     public ProgressService(UserProgressMapper progressMapper,
                            UserProgressSummaryMapper summaryMapper,
-                           PracticeDetailMapper detailMapper) {
+                           PracticeDetailMapper detailMapper,
+                           PracticeService practiceService) {
         this.progressMapper = progressMapper;
         this.summaryMapper = summaryMapper;
         this.detailMapper = detailMapper;
+        this.practiceService = practiceService;
     }
 
     public List<ProgressResponse> getProgress(Long userId) {
@@ -88,6 +92,10 @@ public class ProgressService {
                 d.getScore(),
                 d.getCreatedAt()
         );
+    }
+
+    public ReviewDetailResponse getReviewDetail(Long userId, Long recordId) {
+        return practiceService.getReviewDetail(userId, recordId);
     }
 
     public ProgressResponse saveProgress(Long userId, ProgressRequest request) {
