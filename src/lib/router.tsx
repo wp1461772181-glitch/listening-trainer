@@ -37,7 +37,11 @@ export function createAppRouter() {
   return createBrowserRouter([
     {
       path: '/',
-      element: <RootLayout />,
+      element: (
+        <AuthGuard>
+          <RootLayout />
+        </AuthGuard>
+      ),
       children: [
         { index: true, element: <HomePage /> },
         {

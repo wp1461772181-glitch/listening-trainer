@@ -37,7 +37,7 @@ export default function RootLayout() {
               </button>
               <span className="hidden text-sm text-text-secondary sm:inline">{user.email}</span>
               <button
-                onClick={signOut}
+                onClick={() => { signOut(); navigate('/auth', { replace: true }); }}
                 className="rounded-lg px-3 py-1.5 text-sm text-text-secondary hover:text-text hover:bg-bg-alt transition-all"
               >
                 Sign out
