@@ -12,14 +12,14 @@ import java.util.stream.*;
 @Service
 public class SentenceSplitter {
 
-    private static final Pipeline pipeline;
+    private static final StanfordCoreNLP pipeline;
     private static final ObjectMapper mapper = new ObjectMapper();
 
     static {
         Properties props = new Properties();
         props.setProperty("annotators", "tokenize,ssplit,pos");
         props.setProperty("tokenize.language", "en");
-        pipeline = new Pipeline(props);
+        pipeline = new StanfordCoreNLP(props);
     }
 
     /**
@@ -28,12 +28,13 @@ public class SentenceSplitter {
      * Each blanksJson is: [{word, position, length}]
      */
     public String splitAndTag(String text) {
-        CoreDocument doc = pipeline.processToCoreDocument(text);
+        CoreDocument doc = new CoreDocument(text);
+        pipeline.annotate(doc);
 
         List<Map<String, Object>> sentences = new ArrayList<>();
         int idx = 0;
 
-        for (CoreLabel sentence : doc.sentences()) {
+        for (CoreSentence sentence : doc.sentences()) {
             String sentenceText = sentence.text().trim();
             if (sentenceText.isEmpty()) continue;
 
