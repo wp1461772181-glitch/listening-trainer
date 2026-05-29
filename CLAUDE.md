@@ -3,17 +3,18 @@
 英语听力填空练习 SPA。用户上传英文文本 → CoreNLP 自动分句挖空 → 校对后生成 TTS → 逐句填空练习 → 回顾模式（原文+答案双栏+音频同步高亮）。
 
 **GitHub**: https://github.com/wp1461772181-glitch/listening-trainer
-**Vercel**: https://listening-trainer-xi.vercel.app
-**ECS**: http://121.40.47.186:8080
+**Vercel**: https://listening-trainer-xi.vercel.app（已弃用，Vercel→ECS 海外网络超时）
+**ECS**: https://listening-trainer.cyou
+**域名**: listening-trainer.cyou（HTTPS 已启用，证书到期 2026-08-27）
 **本地路径**: D:\listening-trainer
 
 ---
 
 ## 当前状态
 
-- **在线版本 (Vercel)**: 旧版 Dictogloss 模式（master 分支）
-- **开发版本 (java 分支)**: 逐句填空模式，**已推送 20 个 commit，待部署**
-- java 分支含全新前后端代码，尚未 merge 到 master
+- **在线版本**: java 分支，前端+后端均部署在 ECS（Nginx + Docker）
+- **Vercel 已弃用**: Vercel 海外服务器→杭州 ECS 网络超时，API 代理不可用
+- **域名**: https://listening-trainer.cyou（HTTPS 已启用，证书到期 2026-08-27；www 子域名因阿里云 Beaver WAF 拦截 HTTP 无法签证书）
 
 ---
 
@@ -35,29 +36,38 @@
 
 ## ECS 服务器 (Docker 部署)
 
-**服务器**: 121.40.47.186 (阿里云 ECS 杭州, 2核2G)
+**服务器**: 121.40.47.186 (阿里云 ECS 杭州, 4核8G)
 **SSH**: root@121.40.47.186, 密码 `Wp1461772181.`（Node.js ssh2 连接）
+**域名**: listening-trainer.cyou → 121.40.47.186（A 记录）
+
+**Nginx** (80端口):
+- 配置: `/etc/nginx/sites-enabled/default`
+- 前端: `/var/www/html/listening-trainer/`（来自 java 分支 `npm run build`）
+- 代理: `/api/*` → `localhost:8080`（Spring Boot 后端）
+- HTTPS: certbot 已安装，待 DNS 生效后签发
+- CORS 白名单: `http://localhost:*`, `http://121.40.47.186:*`, `https://listening-trainer-xi.vercel.app`
 
 **容器**:
 - `listening-trainer` — Spring Boot 后端
   - 环境变量: `SPRING_PROFILES_ACTIVE=mysql`, `APP_CORS_ORIGINS=...`
   - 网络: `--network app-network`, 端口: `-p 8080:8080`
-  - 音频文件: `public/audio/lessons/{lessonId}/{idx}.mp3`（需 volume mount 持久化）
+  - 音频文件: `/root/listening-trainer/audio-data/` → volume mount 到 `/app/public/audio/lessons`
 - `mysql` — MySQL 8.0
   - `MYSQL_ROOT_PASSWORD=root`, `MYSQL_DATABASE=listening_trainer`
 
 **部署脚本**: `deploy_changes.cjs` — git pull + Docker rebuild + run
+**前端部署**: `deploy_frontend.cjs` — build + scp 到 `/var/www/html/listening-trainer/`
 
 ⚠️ MySQL 通过 `app-network` 通信，jdbc 地址用 `mysql:3306` 不是 localhost。
 
 ---
 
-## Vercel 部署
+## Vercel 部署（已弃用）
 
-- Scope: `alan-yeager-s-projects`
-- 从 **master** 分支部署
-- `vercel.json` — `/api/(.*)` → `http://121.40.47.186:8080/api/$1`
-- 有时 push 后不自动部署，需手动: `npx vercel --prod --yes --scope alan-yeager-s-projects`
+~~Vercel→ECS 海外网络超时，API 代理不可用。项目已迁移到全 ECS 部署。~~
+
+- 旧配置: Scope `alan-yeager-s-projects`，从 **master** 分支部署
+- `vercel.json` 的 `/api/(.*)` rewrite 指向 `http://121.40.47.186:8080`（已失效）
 
 ---
 
@@ -189,7 +199,7 @@ DDL 在 `backend/src/main/resources/schema.sql`
 
 - Google TTS 国内被墙，已用百度 TTS
 - GitHub push 需代理（v2rayN HTTP 10808）
-- Vercel 有时不自动部署
+- Vercel 海外服务器→杭州 ECS 网络超时，API 代理不可用（已弃用 Vercel）
+- 域名 listening-trainer.cyou HTTPS 已启用，证书到期 2026-08-27（www 子域名因阿里云 WAF 拦截放弃）
 - 旧 practice_details 无数据（新练习会生成）
 - 旧版 Dictogloss 代码（Player.tsx 等）已删除，历史记录的 `practice_details` 通过 fallback 保持兼容
-- java 分支代码已推送但未部署到 ECS，待明天部署
