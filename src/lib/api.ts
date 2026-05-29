@@ -24,7 +24,9 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  const url = `${API_BASE}${path}`;
+  console.log('[api] fetching:', url, 'method:', options.method || 'GET');
+  const res = await fetch(url, { ...options, headers });
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
