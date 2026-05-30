@@ -55,31 +55,38 @@ export default function ClozeRenderer({
   }
 
   // Build rendered text with blanks as inputs
+  // Sort blanks by position to ensure correct rendering order,
+  // but track original indices so results/answers map correctly
+  const sortedBlanks = blanks
+    .map((blank, origIdx) => ({ ...blank, origIdx }))
+    .sort((a, b) => a.position - b.position);
+
   let offset = 0;
   const parts: React.ReactNode[] = [];
 
-  for (let i = 0; i < blanks.length; i++) {
-    const blank = blanks[i];
+  for (let i = 0; i < sortedBlanks.length; i++) {
+    const blank = sortedBlanks[i];
+    const origIdx = blank.origIdx;
     // Text before blank
     if (blank.position > offset) {
       parts.push(text.slice(offset, blank.position));
     }
 
-    // Blank input or display
-    if (readOnly && results && results[i]) {
-      const r = results[i];
+    // Blank input or display - use origIdx to map to results/answers/inputs
+    if (readOnly && results && results[origIdx]) {
+      const r = results[origIdx];
       const color = r.correct ? 'text-success' : 'text-error';
       const bg = r.correct ? 'bg-success/10' : 'bg-error/10';
       const border = r.correct ? 'border-success/30' : 'border-error/30';
       parts.push(
-        <span key={i} className={`inline-block min-w-[60px] border-b-2 ${border} ${bg} ${color} px-1 text-center font-semibold`}>
+        <span key={i} className={`inline-block min-w-[60px] border-b-2 ${border} ${bg} ${color} px-2 text-center font-semibold mx-1`}>
           {r.userAnswer || '—'}
         </span>
       );
     } else if (readOnly) {
       parts.push(
-        <span key={i} className="inline-block min-w-[60px] border-b-2 border-border px-1 text-center">
-          {answers[i] || '—'}
+        <span key={i} className="inline-block min-w-[60px] border-b-2 border-border px-2 text-center mx-1">
+          {answers[origIdx] || '—'}
         </span>
       );
     } else {
@@ -88,12 +95,12 @@ export default function ClozeRenderer({
           key={i}
           ref={el => { if (el) inputRefs.current[i] = el; }}
           type="text"
-          value={inputs[i]}
-          onChange={(e) => handleChange(i, e.target.value)}
-          onKeyDown={(e) => handleKeyDown(i, e)}
+          value={inputs[origIdx]}
+          onChange={(e) => handleChange(origIdx, e.target.value)}
+          onKeyDown={(e) => handleKeyDown(origIdx, e)}
           placeholder="___"
-          className="inline-block min-w-[80px] rounded border-b-2 border-primary bg-primary/5 px-1 text-center text-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
-          style={{ width: `${Math.max(blank.length * 8 + 16, 60)}px` }}
+          className="inline-block min-w-[80px] rounded border-b-2 border-primary bg-primary/5 px-2 text-center text-primary focus:outline-none focus:ring-1 focus:ring-primary/30 mx-1"
+          style={{ width: `${Math.max(blank.length * 10 + 24, 70)}px` }}
         />
       );
     }
