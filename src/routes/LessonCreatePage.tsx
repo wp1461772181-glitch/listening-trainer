@@ -18,6 +18,7 @@ export default function LessonCreatePage() {
   const [hint, setHint] = useState('');
   const [text, setText] = useState('');
   const [voice, setVoice] = useState<'male' | 'female'>('male');
+  const [mode, setMode] = useState<'dialogue' | 'paragraph'>('dialogue');
 
   // Edit state
   const [lessonId, setLessonId] = useState<number | null>(null);
@@ -44,7 +45,7 @@ export default function LessonCreatePage() {
 
     setError('');
     try {
-      const lesson = await apiCreateLesson({ title, difficulty, hint, text, voice });
+      const lesson = await apiCreateLesson({ title, difficulty, hint, text, voice, mode });
       setLessonId(lesson.id);
       setSentences(lesson.sentences);
       setStep('edit');
@@ -129,6 +130,43 @@ export default function LessonCreatePage() {
               <option value="male">Male</option>
               <option value="female">Female</option>
             </select>
+            {mode === 'dialogue' && (
+              <p className="mt-1 text-xs text-text-tertiary">
+                Voices will auto-alternate between speakers in dialogue mode.
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text mb-1">Mode</label>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setMode('dialogue')}
+                className={`flex-1 rounded-lg border p-3 text-sm font-medium transition-all ${
+                  mode === 'dialogue'
+                    ? 'border-primary bg-primary/5 text-primary'
+                    : 'border-border bg-bg text-text-secondary hover:border-primary/30'
+                }`}
+              >
+                <div className="text-base">💬 Dialogue</div>
+                <div className="mt-1 text-xs font-normal text-text-tertiary">
+                  Auto-detects speakers from "Name:" labels
+                </div>
+              </button>
+              <button
+                onClick={() => setMode('paragraph')}
+                className={`flex-1 rounded-lg border p-3 text-sm font-medium transition-all ${
+                  mode === 'paragraph'
+                    ? 'border-primary bg-primary/5 text-primary'
+                    : 'border-border bg-bg text-text-secondary hover:border-primary/30'
+                }`}
+              >
+                <div className="text-base">📄 Long Paragraph</div>
+                <div className="mt-1 text-xs font-normal text-text-tertiary">
+                  IELTS-style single-voice passage
+                </div>
+              </button>
+            </div>
           </div>
 
           <div>

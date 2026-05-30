@@ -45,7 +45,8 @@ public class LessonService {
         lesson.setStatus("drafting");
         lessonMapper.insert(lesson);
 
-        String sentencesJson = sentenceSplitter.splitAndTag(request.getText());
+        String mode = request.getMode() != null ? request.getMode() : "paragraph";
+        String sentencesJson = sentenceSplitter.splitAndTag(request.getText(), mode);
 
         try {
             List<Map<String, Object>> sentences = objectMapper.readValue(sentencesJson, List.class);
@@ -56,7 +57,13 @@ public class LessonService {
                 ls.setLessonId(lesson.getId());
                 ls.setSentenceIndex((Integer) s.get("index"));
                 ls.setText((String) s.get("text"));
+                // Store ttsText (without speaker prefix) for audio generation
+                String ttsText = (String) s.get("ttsText");
                 ls.setVoice(voice);
+                // Store speaker info as JSON in audioPath temporarily (will be set properly in generateAudio)
+                if (s.get("speaker") != null) {
+                    ls.setAudioPath(null); // will be set during audio generation
+                }
                 ls.setBlanksJson(objectMapper.writeValueAsString(s.get("blanksJson")));
                 sentenceMapper.insert(ls);
             }
@@ -138,7 +145,8 @@ public class LessonService {
                 ls.setVoice(currentVoice);
                 sentenceMapper.updateById(ls);
 
-                String audioPath = generateTtsAudio(ls.getText(), audioDir, ls.getSentenceIndex(), ls.getVoice());
+                String ttsText = extractTtsText(ls.getText()); // strip speaker prefix for TTS
+                String audioPath = generateTtsAudio(ttsText, audioDir, ls.getSentenceIndex(), ls.getVoice());
                 ls.setAudioPath(audioPath);
                 sentenceMapper.updateById(ls);
             }
@@ -165,6 +173,17 @@ public class LessonService {
         // Must be a single word (no spaces) to be a speaker label
         if (prefix.contains(" ")) return null;
         return prefix.toLowerCase();
+    }
+
+    /**
+     * Strip speaker prefix from text for TTS (e.g. "Customer: Hello" -> "Hello").
+     */
+    private String extractTtsText(String text) {
+        int colonIdx = text.indexOf(':');
+        if (colonIdx <= 0 || colonIdx > 20) return text;
+        String prefix = text.substring(0, colonIdx).trim();
+        if (prefix.contains(" ") || prefix.length() == 0) return text;
+        return text.substring(colonIdx + 1).trim();
     }
 
     private String generateTtsAudio(String text, Path audioDir, int index, String voice) throws Exception {

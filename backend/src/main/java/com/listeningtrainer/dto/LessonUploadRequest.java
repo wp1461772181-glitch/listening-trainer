@@ -9,6 +9,7 @@ public class LessonUploadRequest {
     private String hint;
     @NotBlank private String text;
     private String voice;
+    private String mode; // "dialogue" or "paragraph"
 
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
@@ -20,4 +21,6 @@ public class LessonUploadRequest {
     public void setText(String text) { this.text = text; }
     public String getVoice() { return voice; }
     public void setVoice(String voice) { this.voice = voice; }
+    public String getMode() { return mode; }
+    public void setMode(String mode) { this.mode = mode; }
 }
