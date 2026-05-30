@@ -91,7 +91,7 @@ export default function HomePage() {
           {(['daily', 'campus', 'academic'] as const).map((d) => (
             <button
               key={d}
-              onClick={() => navigate('/lessons')}
+              onClick={() => navigate(`/lessons?category=${d}`)}
               className="rounded-xl border border-border bg-surface p-5 text-left transition-all duration-200 hover:-translate-y-[1px] hover:shadow-md hover:border-border-strong"
             >
               <div className="text-lg font-bold text-text">{tierTitle(d)}</div>

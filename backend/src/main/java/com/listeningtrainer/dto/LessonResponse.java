@@ -1,6 +1,6 @@
 package com.listeningtrainer.dto;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.*;
 
 public class LessonResponse {
@@ -10,7 +10,7 @@ public class LessonResponse {
     private String difficulty;
     private String hint;
     private String status;
-    private LocalDateTime createdAt;
+    private Instant createdAt;
     private List<LessonSentenceResponse> sentences;
 
     public Long getId() { return id; }
@@ -23,8 +23,8 @@ public class LessonResponse {
     public void setHint(String hint) { this.hint = hint; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public Instant getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
     public List<LessonSentenceResponse> getSentences() { return sentences; }
     public void setSentences(List<LessonSentenceResponse> sentences) { this.sentences = sentences; }
 }

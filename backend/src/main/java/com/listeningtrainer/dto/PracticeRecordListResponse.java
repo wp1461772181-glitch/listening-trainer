@@ -1,6 +1,6 @@
 package com.listeningtrainer.dto;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 public class PracticeRecordListResponse {
 
@@ -10,7 +10,7 @@ public class PracticeRecordListResponse {
     private String difficulty;
     private int score;
     private int listenCount;
-    private LocalDateTime completedAt;
+    private Instant completedAt;
     private int sentenceCount;
 
     public Long getRecordId() { return recordId; }
@@ -25,8 +25,8 @@ public class PracticeRecordListResponse {
     public void setScore(int score) { this.score = score; }
     public int getListenCount() { return listenCount; }
     public void setListenCount(int listenCount) { this.listenCount = listenCount; }
-    public LocalDateTime getCompletedAt() { return completedAt; }
-    public void setCompletedAt(LocalDateTime completedAt) { this.completedAt = completedAt; }
+    public Instant getCompletedAt() { return completedAt; }
+    public void setCompletedAt(Instant completedAt) { this.completedAt = completedAt; }
     public int getSentenceCount() { return sentenceCount; }
     public void setSentenceCount(int sentenceCount) { this.sentenceCount = sentenceCount; }
 }

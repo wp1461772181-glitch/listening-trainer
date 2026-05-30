@@ -1,6 +1,6 @@
-import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import type { Lesson } from '../types';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import type { Lesson, Difficulty } from '../types';
 import { apiGetAllLessons, apiDeleteLesson } from '../lib/api';
 import StatusBadge from '../components/StatusBadge';
 import Badge from './ui/Badge';
@@ -12,10 +12,19 @@ const tierTitles: Record<string, string> = {
   academic: 'Academic Lectures',
 };
 
+const tierColors: Record<string, string> = {
+  daily: 'success',
+  campus: 'warning',
+  academic: 'primary',
+};
+
 export default function LessonsPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const activeCategory = searchParams.get('category') as Difficulty | null;
 
   useEffect(() => {
     apiGetAllLessons()
@@ -23,6 +32,17 @@ export default function LessonsPage() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  const filtered = activeCategory
+    ? lessons.filter(l => l.difficulty === activeCategory)
+    : lessons;
+
+  const categories = [
+    { key: null, label: 'All' },
+    { key: 'daily' as const, label: 'Daily Life' },
+    { key: 'campus' as const, label: 'Campus Life' },
+    { key: 'academic' as const, label: 'Academic Lectures' },
+  ];
 
   async function handleDelete(id: number) {
     if (!confirm('Delete this lesson and all its audio?')) return;
@@ -54,19 +74,46 @@ export default function LessonsPage() {
         </button>
       </div>
 
-      {lessons.length === 0 ? (
-        <Card className="py-16 text-center">
-          <p className="text-sm text-text-secondary">No lessons yet.</p>
+      {/* Category filter tabs */}
+      <div className="flex gap-2">
+        {categories.map(cat => (
           <button
-            onClick={() => navigate('/lessons/new')}
-            className="mt-4 rounded-lg bg-primary px-6 py-2 text-sm font-medium text-white"
+            key={cat.key || 'all'}
+            onClick={() => {
+              if (cat.key) {
+                setSearchParams({ category: cat.key });
+              } else {
+                setSearchParams({});
+              }
+            }}
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${
+              activeCategory === cat.key
+                ? 'bg-primary text-white'
+                : 'border border-border bg-surface text-text-secondary hover:border-primary/50'
+            }`}
           >
-            Create your first lesson
+            {cat.label}
           </button>
+        ))}
+      </div>
+
+      {filtered.length === 0 ? (
+        <Card className="py-16 text-center">
+          <p className="text-sm text-text-secondary">
+            {activeCategory ? 'No lessons in this category.' : 'No lessons yet.'}
+          </p>
+          {!activeCategory && (
+            <button
+              onClick={() => navigate('/lessons/new')}
+              className="mt-4 rounded-lg bg-primary px-6 py-2 text-sm font-medium text-white"
+            >
+              Create your first lesson
+            </button>
+          )}
         </Card>
       ) : (
         <div className="space-y-2">
-          {lessons.map((lesson, idx) => (
+          {filtered.map((lesson, idx) => (
             <div
               key={lesson.id}
               className="flex items-center gap-4 rounded-xl border border-border bg-surface p-4 transition-all"
@@ -80,7 +127,7 @@ export default function LessonsPage() {
                   <StatusBadge status={lesson.status} />
                 </div>
                 <div className="mt-0.5 flex items-center gap-2">
-                  <Badge variant={lesson.difficulty === 'daily' ? 'success' : lesson.difficulty === 'campus' ? 'warning' : 'primary'}>
+                  <Badge variant={tierColors[lesson.difficulty] || 'primary'}>
                     {tierTitles[lesson.difficulty]}
                   </Badge>
                   <span className="text-xs text-text-secondary">

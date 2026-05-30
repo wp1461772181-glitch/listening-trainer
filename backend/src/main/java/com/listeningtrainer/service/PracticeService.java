@@ -120,6 +120,7 @@ public class PracticeService {
         record.setLessonId(lessonId);
         record.setUserId(userId);
         record.setListenCount(0);
+        record.setCompletedAt(java.time.Instant.now());
         recordMapper.insert(record);
 
         int totalScore = 0;

@@ -1,7 +1,7 @@
 package com.listeningtrainer.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @TableName("practice_record")
 public class PracticeRecord {
@@ -12,7 +12,7 @@ public class PracticeRecord {
     private Long userId;
     private Integer score;
     private Integer listenCount;
-    private LocalDateTime completedAt;
+    private Instant completedAt;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -24,6 +24,6 @@ public class PracticeRecord {
     public void setScore(Integer score) { this.score = score; }
     public Integer getListenCount() { return listenCount; }
     public void setListenCount(Integer listenCount) { this.listenCount = listenCount; }
-    public LocalDateTime getCompletedAt() { return completedAt; }
-    public void setCompletedAt(LocalDateTime completedAt) { this.completedAt = completedAt; }
+    public Instant getCompletedAt() { return completedAt; }
+    public void setCompletedAt(Instant completedAt) { this.completedAt = completedAt; }
 }

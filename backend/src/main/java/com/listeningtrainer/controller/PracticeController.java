@@ -52,6 +52,20 @@ public class PracticeController {
                 user.getId(), lessonId, answers);
         return ResponseEntity.ok(resp);
     }
+}
+
+/**
+ * Top-level practice endpoints that don't require a specific lessonId.
+ */
+@RestController
+@RequestMapping("/api/lessons/practice")
+class PracticeListController {
+
+    private final PracticeService practiceService;
+
+    PracticeListController(PracticeService practiceService) {
+        this.practiceService = practiceService;
+    }
 
     /**
      * List all practice records for current user.

@@ -43,9 +43,10 @@ public class LessonService {
         lesson.setDifficulty(request.getDifficulty());
         lesson.setHint(request.getHint());
         lesson.setStatus("drafting");
+        lesson.setCreatedAt(java.time.Instant.now());
         lessonMapper.insert(lesson);
 
-        String mode = request.getMode() != null ? request.getMode() : "paragraph";
+        String mode = request.getMode() != null ? request.getMode() : detectMode(request.getText());
         String sentencesJson = sentenceSplitter.splitAndTag(request.getText(), mode);
 
         try {
@@ -92,7 +93,7 @@ public class LessonService {
             ls.setLessonId(lessonId);
             ls.setSentenceIndex(edit.getIndex());
             ls.setText(edit.getText());
-            ls.setVoice(lesson.getDifficulty().equals("academic") ? "female" : "male");
+            ls.setVoice("male");
             try {
                 ls.setBlanksJson(objectMapper.writeValueAsString(edit.getBlanksJson()));
             } catch (Exception e) {
@@ -160,6 +161,20 @@ public class LessonService {
         }
 
         return getLessonById(lessonId, userId);
+    }
+
+    /**
+     * Auto-detect whether text is dialogue or paragraph based on speaker prefix patterns.
+     * Returns "dialogue" if at least 2 lines start with "Name:" pattern.
+     */
+    private static final java.util.regex.Pattern MODE_SPEAKER_PATTERN =
+        java.util.regex.Pattern.compile("(?m)^\\s*[A-Za-z][A-Za-z\\s]{0,15}?:\\s");
+
+    private String detectMode(String text) {
+        java.util.regex.Matcher m = MODE_SPEAKER_PATTERN.matcher(text);
+        int count = 0;
+        while (m.find() && count < 2) count++;
+        return count >= 2 ? "dialogue" : "paragraph";
     }
 
     /**
