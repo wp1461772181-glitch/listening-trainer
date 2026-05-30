@@ -13,8 +13,28 @@
 ## 当前状态
 
 - **在线版本**: java 分支，前端+后端均部署在 ECS（Nginx + Docker）
+- **前端部署方式**: `npm run build` → SFTP 上传到 `/var/www/html/listening-trainer/`（脚本: `upload_frontend.cjs`）
 - **Vercel 已弃用**: Vercel 海外服务器→杭州 ECS 网络超时，API 代理不可用
-- **域名**: https://listening-trainer.cyou（HTTPS 已启用，证书到期 2026-08-27；www 子域名因阿里云 Beaver WAF 拦截 HTTP 无法签证书）
+- **域名**: https://listening-trainer.cyou（HTTPS 已启用，证书到期 2026-08-27）
+
+---
+
+## 智能挖空算法 (2026-05-30 上线)
+
+### 三级评分体系
+后端新增 `WordBank.java` + `SentenceSplitter.java` 改造：
+
+1. **黑名单** (348词, score=0 → 绝不挖空): 泛义动词/代词/限定词/介词/连词/常见副词/形容词/缩写/语气词
+2. **核心词库** (~150词, score=100+ → 优先挖空): 雅思听力高频答案词（地点/时间/数字/生活/校园/旅行/态度）
+3. **默认POS评分** (score=5-25): 专有名词=20 > 普通名词=15 > 形容词=10 > 副词=7 > 动词=5
+
+**加分项**: 词长≥6 (+3), 前缀 un/in/dis (+2), 后缀 ful/less/tion (+2)
+
+**选择策略**: 贪心选择，两空之间至少间隔3个词，按分数排序
+
+### 前端挖空渲染修复 (2026-05-30)
+**Bug**: API 返回的 blanks 按分数排序而非 position 排序，ClozeRenderer 按接收顺序渲染导致文本偏移/重复
+**修复**: `ClozeRenderer.tsx` 中先按 `position` 排序再渲染，用 `origIdx` 保持与 results/answers/inputs 的正确映射
 
 ---
 
@@ -55,10 +75,11 @@
 - `mysql` — MySQL 8.0
   - `MYSQL_ROOT_PASSWORD=root`, `MYSQL_DATABASE=listening_trainer`
 
-**部署脚本**: `deploy_changes.cjs` — git pull + Docker rebuild + run
-**前端部署**: `deploy_frontend.cjs` — build + scp 到 `/var/www/html/listening-trainer/`
+**部署脚本**: `deploy_fix.cjs` — SSH 上传 Java 源码 → Docker build → 重启容器
+**前端部署**: `upload_frontend.cjs` — Vite build → SFTP 到 `/var/www/html/listening-trainer/`
 
 ⚠️ MySQL 通过 `app-network` 通信，jdbc 地址用 `mysql:3306` 不是 localhost。
+⚠️ Docker build 不要加 `--no-cache`，mirror.iscas.ac.cn 拉取 JRE 基础层会 504 超时。
 
 ---
 
@@ -173,7 +194,8 @@ DDL 在 `backend/src/main/resources/schema.sql`
 | `controller/AuthController.java` | 注册/登录/JWT |
 | `service/LessonService.java` | 上传分句→校对→生成百度TTS音频 |
 | `service/PracticeService.java` | 练习逻辑+答案评分+回顾数据 |
-| `service/SentenceSplitter.java` | Stanford CoreNLP 分句+词性标注挖空 |
+| `service/SentenceSplitter.java` | Stanford CoreNLP 分句+词性标注+智能挖空评分 |
+| `service/WordBank.java` | 三级评分词库: 黑名单348词 + 核心词150 + POS默认评分 |
 | `service/ProgressService.java` | 旧进度逻辑+回顾代理 |
 | `entity/Lesson.java` | 课程实体 |
 | `entity/LessonSentence.java` | 句子实体 |
@@ -186,7 +208,7 @@ DDL 在 `backend/src/main/resources/schema.sql`
 
 ## 练习流程
 
-1. 用户上传英文文本 → 后端 CoreNLP 分句+挖空（名词/动词，最多4个/句）
+1. 用户上传英文文本 → 后端 CoreNLP 分句 → WordBank 三级评分智能挖空（名词优先，黑名单过滤常见词）
 2. 用户校对句子（编辑/合并/删除/调整挖空）→ 确认
 3. 逐句调用百度 TTS 生成 MP3（每句独立文件）→ 状态变为 ready
 4. 练习：逐句播放音频 → 填空 → 检查 → Next → 循环
@@ -203,3 +225,12 @@ DDL 在 `backend/src/main/resources/schema.sql`
 - 域名 listening-trainer.cyou HTTPS 已启用，证书到期 2026-08-27（www 子域名因阿里云 WAF 拦截放弃）
 - 旧 practice_details 无数据（新练习会生成）
 - 旧版 Dictogloss 代码（Player.tsx 等）已删除，历史记录的 `practice_details` 通过 fallback 保持兼容
+- 词库硬编码在 `WordBank.java` 中，未来计划迁移到 MySQL + 管理后台，根据用户错误率动态调整
+
+## 开发日志
+
+### 2026-05-30
+- **智能挖空算法上线**: WordBank 三级评分体系（黑名单/核心词/POS评分），替代原先"所有实词都挖空"的朴素方案
+- **ClozeRenderer 渲染修复**: blanks 按 position 排序后再渲染，修复 API 返回顺序导致的文本重复/空白错位问题
+- **时区修复**: `LocalDateTime` → `Instant`，前端显示时间正确
+- **部署方式确认**: 前端 Vite build → SFTP 上传，后端 SSH 上传源码 → Docker build → 重启容器
