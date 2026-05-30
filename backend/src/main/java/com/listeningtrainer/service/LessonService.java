@@ -126,17 +126,17 @@ public class LessonService {
             for (LessonSentence ls : sentences) {
                 // Detect speaker prefix (e.g. "Customer:", "Barista:")
                 String speaker = extractSpeaker(ls.getText());
-                if (prevSpeaker == null) {
-                    // First speaker defaults to male
+                if (prevSpeaker == null && speaker == null) {
+                    // No speaker labels at all, keep default male
                     currentVoice = "male";
-                } else if (!speaker.equals(prevSpeaker)) {
+                } else if (speaker != null && !speaker.equals(prevSpeaker)) {
                     currentVoice = currentVoice.equals("male") ? "female" : "male";
                 }
                 if (speaker != null) {
                     prevSpeaker = speaker;
-                    ls.setVoice(currentVoice);
-                    sentenceMapper.updateById(ls);
                 }
+                ls.setVoice(currentVoice);
+                sentenceMapper.updateById(ls);
 
                 String audioPath = generateTtsAudio(ls.getText(), audioDir, ls.getSentenceIndex(), ls.getVoice());
                 ls.setAudioPath(audioPath);
@@ -146,6 +146,7 @@ public class LessonService {
             lesson.setStatus("ready");
             lessonMapper.updateById(lesson);
         } catch (Exception e) {
+            e.printStackTrace();
             lesson.setStatus("failed");
             lessonMapper.updateById(lesson);
         }
