@@ -31,7 +31,7 @@ public class SentenceSplitter {
     /**
      * Split text into sentences and generate blanks for each.
      * @param mode "dialogue" or "paragraph"
-     * @return JSON array of sentence objects: [{text, displayText, blanksJson, speaker}, ...]
+     * @return JSON array of sentence objects
      */
     public String splitAndTag(String text, String mode) {
         boolean isDialogue = "dialogue".equalsIgnoreCase(mode);
@@ -42,7 +42,6 @@ public class SentenceSplitter {
         List<Map<String, Object>> sentences = new ArrayList<>();
         int idx = 0;
 
-        // For dialogue: track which speaker each sentence belongs to
         String currentSpeaker = null;
 
         for (CoreSentence sentence : doc.sentences()) {
@@ -50,31 +49,28 @@ public class SentenceSplitter {
             if (sentenceText.isEmpty()) continue;
 
             String speaker = null;
-            String ttsText = sentenceText; // text sent to TTS (may strip speaker prefix)
-            String displayText = sentenceText; // text shown on screen
+            String ttsText = sentenceText;
+            int speakerPrefixLength = 0; // length of "Customer: " prefix
 
             if (isDialogue) {
                 Matcher m = SPEAKER_PATTERN.matcher(sentenceText);
                 if (m.find()) {
                     currentSpeaker = m.group(1).trim();
                     speaker = currentSpeaker.toLowerCase();
-                    // TTS text without speaker prefix
                     ttsText = sentenceText.substring(m.end()).trim();
-                    // Display text keeps the full sentence
-                    displayText = sentenceText;
+                    speakerPrefixLength = m.end(); // includes trailing space after colon
                 }
             }
 
-            List<Map<String, Object>> blanks = generateBlanks(ttsText, isDialogue, speaker != null);
+            List<Map<String, Object>> blanks = generateBlanks(sentenceText, speakerPrefixLength, isDialogue);
 
-            // Limit blanks to max 4 per sentence for playability
             if (blanks.size() > 4) {
                 blanks = blanks.subList(0, 4);
             }
 
             Map<String, Object> sentenceObj = new LinkedHashMap<>();
             sentenceObj.put("index", idx);
-            sentenceObj.put("text", displayText);
+            sentenceObj.put("text", sentenceText);
             sentenceObj.put("ttsText", ttsText);
             sentenceObj.put("speaker", speaker);
             sentenceObj.put("blanksJson", blanks);
@@ -91,12 +87,11 @@ public class SentenceSplitter {
     }
 
     /**
-     * Generate blanks from text.
-     * For dialogue with speaker prefix: skip the first token if it's the speaker name.
-     * For paragraph: use more aggressive blank selection (include adjectives, adverbs).
+     * Generate blanks from full sentence text.
+     * Skips tokens within speakerPrefixLength (e.g. "Customer:").
      */
-    private List<Map<String, Object>> generateBlanks(String ttsText, boolean isDialogue, boolean hasSpeaker) {
-        CoreDocument doc = new CoreDocument(ttsText);
+    private List<Map<String, Object>> generateBlanks(String fullText, int speakerPrefixLength, boolean isDialogue) {
+        CoreDocument doc = new CoreDocument(fullText);
         pipeline.annotate(doc);
 
         List<Map<String, Object>> blanks = new ArrayList<>();
@@ -107,35 +102,29 @@ public class SentenceSplitter {
         List<CoreLabel> tokens = sentence.tokens();
         int position = 0;
 
-        // Track if we're past the speaker prefix area
-        boolean pastSpeakerPrefix = false;
-
         for (CoreLabel token : tokens) {
             String pos = token.tag();
             String word = token.word();
+            int wordStart = position;
+            int wordEnd = position + word.length();
 
-            // For dialogue: skip tokens that are part of speaker prefix (usually first 1-2 tokens)
-            if (isDialogue && hasSpeaker && !pastSpeakerPrefix) {
-                // Skip first colon-terminated content (speaker name tokens)
-                if (word.equals(":") || position == 0) {
-                    position += word.length() + 1;
-                    if (word.equals(":")) pastSpeakerPrefix = true;
-                    continue;
-                }
-            }
+            position += word.length() + 1; // +1 for space/punctuation separator
+
+            // Skip tokens within speaker prefix area
+            if (wordEnd <= speakerPrefixLength) continue;
+
+            if (word.length() <= 2) continue;
 
             if (isDialogue) {
-                // Dialogue mode: only nouns and verbs (more conservative)
+                // Dialogue mode: only nouns and verbs (conservative)
                 boolean isNoun = pos.startsWith("NN");
                 boolean isVerb = pos.startsWith("VB");
                 if (isNoun || isVerb) {
-                    if (word.length() > 2) {
-                        Map<String, Object> blank = new LinkedHashMap<>();
-                        blank.put("word", word);
-                        blank.put("position", position);
-                        blank.put("length", word.length());
-                        blanks.add(blank);
-                    }
+                    Map<String, Object> blank = new LinkedHashMap<>();
+                    blank.put("word", word);
+                    blank.put("position", wordStart);
+                    blank.put("length", word.length());
+                    blanks.add(blank);
                 }
             } else {
                 // Paragraph mode: include nouns, verbs, adjectives, adverbs
@@ -144,24 +133,20 @@ public class SentenceSplitter {
                 boolean isAdj = pos.startsWith("JJ");
                 boolean isAdv = pos.startsWith("RB");
                 if (isNoun || isVerb || isAdj || isAdv) {
-                    if (word.length() > 2) {
-                        Map<String, Object> blank = new LinkedHashMap<>();
-                        blank.put("word", word);
-                        blank.put("position", position);
-                        blank.put("length", word.length());
-                        blanks.add(blank);
-                    }
+                    Map<String, Object> blank = new LinkedHashMap<>();
+                    blank.put("word", word);
+                    blank.put("position", wordStart);
+                    blank.put("length", word.length());
+                    blanks.add(blank);
                 }
             }
-
-            position += word.length() + 1;
         }
 
         return blanks;
     }
 
     /**
-     * Backward-compatible method for non-dialogue mode.
+     * Backward-compatible method.
      */
     public String splitAndTag(String text) {
         return splitAndTag(text, "paragraph");
