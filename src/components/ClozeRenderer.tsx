@@ -84,9 +84,9 @@ export default function ClozeRenderer({
           value={inputs[i]}
           onChange={(e) => handleChange(i, e.target.value)}
           onKeyDown={(e) => handleKeyDown(i, e)}
-          placeholder={blank.word}
+          placeholder="___"
           className="inline-block min-w-[80px] rounded border-b-2 border-primary bg-primary/5 px-1 text-center text-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
-          style={{ width: `${Math.max(blank.word.length * 8 + 16, 60)}px` }}
+          style={{ width: `${Math.max(blank.length * 8 + 16, 60)}px` }}
         />
       );
     }

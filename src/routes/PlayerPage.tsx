@@ -256,7 +256,7 @@ export default function PlayerPage() {
       {/* Sentence with blanks */}
       <Card className="p-6">
         <ClozeRenderer
-          text=""
+          text={sentenceInfo.sentenceText}
           blanks={sentenceInfo.blanks}
           onAnswersChange={setUserInputs}
         />

@@ -56,6 +56,7 @@ public class PracticeService {
         info.setIndex(ls.getSentenceIndex());
         info.setTotalSentences(total);
         info.setAudioPath(ls.getAudioPath());
+        info.setSentenceText(ls.getText());
         try {
             info.setBlanks(objectMapper.readValue(ls.getBlanksJson(), List.class));
         } catch (Exception e) {

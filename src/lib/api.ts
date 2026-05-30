@@ -27,6 +27,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE}${path}`;
   console.log('[api] fetching:', url, 'method:', options.method || 'GET');
   const res = await fetch(url, { ...options, headers });
+  console.log('[api] response:', url, res.status, res.ok);
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -237,6 +238,7 @@ export interface SentencePracticeInfo {
   index: number;
   totalSentences: number;
   audioPath: string;
+  sentenceText: string;
   blanks: { word: string; position: number; length: number }[];
 }
 

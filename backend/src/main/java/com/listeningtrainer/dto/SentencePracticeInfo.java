@@ -8,6 +8,7 @@ public class SentencePracticeInfo {
     private Integer index;
     private Integer totalSentences;
     private String audioPath;
+    private String sentenceText;
     private List<Map<String, Object>> blanks;
 
     public Long getSentenceId() { return sentenceId; }
@@ -18,6 +19,8 @@ public class SentencePracticeInfo {
     public void setTotalSentences(Integer totalSentences) { this.totalSentences = totalSentences; }
     public String getAudioPath() { return audioPath; }
     public void setAudioPath(String audioPath) { this.audioPath = audioPath; }
+    public String getSentenceText() { return sentenceText; }
+    public void setSentenceText(String sentenceText) { this.sentenceText = sentenceText; }
     public List<Map<String, Object>> getBlanks() { return blanks; }
     public void setBlanks(List<Map<String, Object>> blanks) { this.blanks = blanks; }
 }
