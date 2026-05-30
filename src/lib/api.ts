@@ -26,7 +26,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   const url = `${API_BASE}${path}`;
   console.log('[api] fetching:', url, 'method:', options.method || 'GET');
-  const res = await fetch(url, { ...options, headers });
+  const res = await fetch(url, {
+    ...options,
+    headers,
+    cache: 'no-store',
+  });
   console.log('[api] response:', url, res.status, res.ok);
 
   if (!res.ok) {
@@ -243,7 +247,7 @@ export interface SentencePracticeInfo {
 }
 
 export async function apiGetSentence(lessonId: number, sentenceIdx: number): Promise<SentencePracticeInfo> {
-  return request<SentencePracticeInfo>(`/api/lessons/${lessonId}/practice?sentenceIdx=${sentenceIdx}`);
+  return request<SentencePracticeInfo>(`/api/lessons/${lessonId}/practice?sentenceIdx=${sentenceIdx}&_=${Date.now()}`);
 }
 
 export async function apiSubmitSentenceAnswer(

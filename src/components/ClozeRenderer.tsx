@@ -26,17 +26,24 @@ export default function ClozeRenderer({
   const [inputs, setInputs] = useState<string[]>(blanks.map(() => ''));
   const inputRefs = useRef<HTMLInputElement[]>([]);
 
+  // Reset inputs when blanks change (new sentence)
+  useEffect(() => {
+    setInputs(blanks.map(() => ''));
+  }, [blanks]);
+
   useEffect(() => {
     if (!readOnly && inputRefs.current[0]) {
       inputRefs.current[0]?.focus();
     }
-  }, [readOnly]);
+  }, [readOnly, blanks]);
 
   function handleChange(idx: number, value: string) {
-    const next = [...inputs];
-    next[idx] = value;
-    setInputs(next);
-    onAnswersChange?.(next);
+    setInputs(prev => {
+      const next = [...prev];
+      next[idx] = value;
+      onAnswersChange?.(next);
+      return next;
+    });
   }
 
   function handleKeyDown(idx: number, e: React.KeyboardEvent) {
