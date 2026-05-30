@@ -34,6 +34,7 @@ export default function PlayerPage() {
     if (!lessonId) return;
     apiGetLesson(Number(lessonId))
       .then((l) => {
+        console.log('[player] lesson loaded:', l?.status, 'sentences:', l?.sentences?.length);
         setLesson(l);
         if (l.status !== 'ready') {
           setLoading(false);
@@ -49,11 +50,16 @@ export default function PlayerPage() {
     if (!lessonId) return;
     apiGetSentence(Number(lessonId), idx)
       .then((info) => {
+        console.log('[player] sentence info received:', info);
+        setLoading(false);
         setSentenceInfo(info);
         setUserInputs(info.blanks.map(() => ''));
         setSentenceResult(null);
       })
-      .catch(() => {});
+      .catch((err) => {
+        console.error('[player] loadSentence error:', err);
+        setLoading(false);
+      });
   }, [lessonId]);
 
   function playAudio() {
