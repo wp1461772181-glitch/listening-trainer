@@ -8,7 +8,7 @@ conn.on('ready', () => {
     'cd /root/listening-trainer && mkdir -p audio-data 2>&1',
     'cd /root/listening-trainer/backend && docker build -t listening-trainer . 2>&1',
     'docker rm -f listening-trainer 2>&1',
-    'docker run -d --name listening-trainer --network app-network -v /var/www/html/listening-trainer/audio:/app/public/audio/lessons -e SPRING_PROFILES_ACTIVE=mysql -e "APP_CORS_ORIGINS=http://localhost:*,http://121.40.47.186,http://121.40.47.186:*,https://listening-trainer-xi.vercel.app,https://*.vercel.app" -p 8080:8080 listening-trainer 2>&1',
+    'docker run -d --name listening-trainer --network app-network -v /var/www/html/listening-trainer/audio:/app/public/audio/lessons -e SPRING_PROFILES_ACTIVE=mysql -e "APP_CORS_ORIGINS=http://localhost:*,https://localhost:*,http://121.40.47.186,http://121.40.47.186:*,https://121.40.47.186,https://listening-trainer.cyou,https://listening-trainer-xi.vercel.app,https://*.vercel.app" -p 8080:8080 listening-trainer 2>&1',
   ];
   let i = 0;
   function run() {

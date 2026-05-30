@@ -88,6 +88,7 @@ public class SentenceSplitter {
 
     /**
      * Generate blanks from full sentence text.
+     * Uses CoreLabel's actual character positions for accurate offsets.
      * Skips tokens within speakerPrefixLength (e.g. "Customer:").
      */
     private List<Map<String, Object>> generateBlanks(String fullText, int speakerPrefixLength, boolean isDialogue) {
@@ -100,15 +101,13 @@ public class SentenceSplitter {
 
         CoreSentence sentence = doc.sentences().get(0);
         List<CoreLabel> tokens = sentence.tokens();
-        int position = 0;
 
         for (CoreLabel token : tokens) {
             String pos = token.tag();
             String word = token.word();
-            int wordStart = position;
-            int wordEnd = position + word.length();
-
-            position += word.length() + 1; // +1 for space/punctuation separator
+            // Use actual character positions from CoreNLP
+            int wordStart = token.beginPosition();
+            int wordEnd = token.endPosition();
 
             // Skip tokens within speaker prefix area
             if (wordEnd <= speakerPrefixLength) continue;

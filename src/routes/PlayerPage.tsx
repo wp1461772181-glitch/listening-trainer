@@ -19,6 +19,7 @@ export default function PlayerPage() {
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentIdx, setCurrentIdx] = useState(0);
+  const currentIdxRef = useRef(0);
   const [sentenceInfo, setSentenceInfo] = useState<SentencePracticeInfo | null>(null);
   const [userInputs, setUserInputs] = useState<string[]>([]);
   const [sentenceResult, setSentenceResult] = useState<{ score: number; blanks: any[] } | null>(null);
@@ -40,21 +41,37 @@ export default function PlayerPage() {
           setLoading(false);
           return;
         }
-        // Load first sentence
-        loadSentence(0);
+  // Load first sentence
+        loadSentence(0, () => {
+          currentIdxRef.current = 0;
+        });
       })
       .catch(() => setLoading(false));
   }, [lessonId]);
 
-  const loadSentence = useCallback((idx: number) => {
+  const loadSentence = useCallback((idx: number, onDone?: () => void) => {
     if (!lessonId) return;
     apiGetSentence(Number(lessonId), idx)
       .then((info) => {
         console.log('[player] sentence info received:', info);
         setLoading(false);
+        // Skip sentences with no blanks - auto-advance to next sentence
+        if (info.blanks.length === 0) {
+          if (idx + 1 < info.totalSentences) {
+            console.log('[player] skipping sentence', idx, '- no blanks');
+            loadSentence(idx + 1);
+            return;
+          } else {
+            // No more sentences with blanks, finish
+            console.log('[player] no more sentences with blanks, finishing');
+            handleSubmit();
+            return;
+          }
+        }
         setSentenceInfo(info);
         setUserInputs(info.blanks.map(() => ''));
         setSentenceResult(null);
+        onDone?.();
       })
       .catch((err) => {
         console.error('[player] loadSentence error:', err);
@@ -77,10 +94,13 @@ export default function PlayerPage() {
   }, [sentenceInfo, completed]);
 
   function handleCheck() {
-    if (!sentenceInfo) return;
+    if (!sentenceInfo || sentenceInfo.blanks.length === 0) return;
 
+    // Allow check even if no inputs filled, as long as there are blanks
     const filledInputs = userInputs.filter(v => v.trim() !== '');
-    if (filledInputs.length === 0) return;
+    if (filledInputs.length === 0 && sentenceInfo.blanks.length > 0) {
+      // Auto-fill empty strings so check can proceed (will show all wrong)
+    }
 
     // Compute score locally
     let correct = 0;
@@ -109,12 +129,14 @@ export default function PlayerPage() {
 
   function handleNext() {
     if (!sentenceInfo) return;
-    if (currentIdx + 1 >= sentenceInfo.totalSentences) {
+    const newIdx = currentIdxRef.current + 1;
+    if (newIdx >= sentenceInfo.totalSentences) {
       // Complete practice
       handleSubmit();
     } else {
-      setCurrentIdx(prev => prev + 1);
-      loadSentence(currentIdx + 1);
+      setCurrentIdx(newIdx);
+      currentIdxRef.current = newIdx;
+      loadSentence(newIdx);
     }
   }
 
@@ -215,7 +237,7 @@ export default function PlayerPage() {
     );
   }
 
-  const progress = ((currentIdx + 1) / sentenceInfo.totalSentences) * 100;
+  const progress = ((currentIdxRef.current + 1) / sentenceInfo.totalSentences) * 100;
 
   return (
     <div className="space-y-6 animate-fade-in-up">
@@ -229,7 +251,7 @@ export default function PlayerPage() {
         </button>
         <div className="text-sm font-semibold text-text">{lesson.title}</div>
         <div className="text-sm text-text-secondary">
-          {currentIdx + 1} / {sentenceInfo.totalSentences}
+          {currentIdxRef.current + 1} / {sentenceInfo.totalSentences}
         </div>
       </div>
 
@@ -299,12 +321,14 @@ export default function PlayerPage() {
           <>
             <button
               onClick={() => {
-                setCurrentIdx(prev => Math.max(0, prev - 1));
-                loadSentence(Math.max(0, currentIdx - 1));
+                const prevIdx = Math.max(0, currentIdxRef.current - 1);
+                setCurrentIdx(prevIdx);
+                currentIdxRef.current = prevIdx;
+                loadSentence(prevIdx);
                 setAnswers(prev => prev.slice(0, -1));
                 setSentenceResult(null);
               }}
-              disabled={currentIdx === 0}
+              disabled={currentIdxRef.current === 0}
               className="rounded-xl border border-border bg-bg px-6 py-3 font-semibold text-text hover:border-primary/50 hover:text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-all"
             >
               Previous
@@ -313,7 +337,7 @@ export default function PlayerPage() {
               onClick={handleNext}
               className="flex-1 rounded-xl bg-primary py-3 font-semibold text-white hover:bg-primary-hover transition-all"
             >
-              {currentIdx + 1 >= sentenceInfo.totalSentences ? 'Finish' : 'Next Sentence'}
+              {currentIdxRef.current + 1 >= sentenceInfo.totalSentences ? 'Finish' : 'Next Sentence'}
             </button>
           </>
         )}

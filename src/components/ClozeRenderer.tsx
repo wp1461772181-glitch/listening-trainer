@@ -16,7 +16,7 @@ interface ClozeRendererProps {
 }
 
 export default function ClozeRenderer({
-  text,
+  text = '',
   blanks,
   onAnswersChange,
   readOnly = false,
