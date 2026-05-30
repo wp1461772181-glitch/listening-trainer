@@ -177,6 +177,39 @@ public class PracticeService {
     }
 
     /**
+     * List all practice records for user.
+     */
+    public List<PracticeRecordListResponse> listPracticeRecords(Long userId) {
+        LambdaQueryWrapper<PracticeRecord> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(PracticeRecord::getUserId, userId)
+               .orderByDesc(PracticeRecord::getCompletedAt);
+        List<PracticeRecord> records = recordMapper.selectList(wrapper);
+
+        List<PracticeRecordListResponse> result = new ArrayList<>();
+        for (PracticeRecord record : records) {
+            Lesson lesson = lessonMapper.selectById(record.getLessonId());
+            if (lesson == null) continue;
+
+            // Count sentences for this record
+            LambdaQueryWrapper<PracticeAnswer> ansWrapper = new LambdaQueryWrapper<>();
+            ansWrapper.eq(PracticeAnswer::getRecordId, record.getId());
+            int sentenceCount = answerMapper.selectCount(ansWrapper).intValue();
+
+            PracticeRecordListResponse resp = new PracticeRecordListResponse();
+            resp.setRecordId(record.getId());
+            resp.setLessonId(lesson.getId());
+            resp.setLessonTitle(lesson.getTitle());
+            resp.setDifficulty(lesson.getDifficulty());
+            resp.setScore(record.getScore());
+            resp.setListenCount(record.getListenCount());
+            resp.setCompletedAt(record.getCompletedAt());
+            resp.setSentenceCount(sentenceCount);
+            result.add(resp);
+        }
+        return result;
+    }
+
+    /**
      * Get review detail with original text + user answers.
      */
     public ReviewDetailResponse getReviewDetail(Long userId, Long recordId) {
@@ -211,7 +244,20 @@ public class PracticeService {
             if (ls != null) detail.setAudioPath(ls.getAudioPath());
 
             try {
-                detail.setBlanks(objectMapper.readValue(pa.getBlanksJson(), List.class));
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> blanks = objectMapper.readValue(pa.getBlanksJson(), List.class);
+                // Enrich blanks with correct/wrong status
+                String[] userWords = pa.getUserAnswer() != null ? pa.getUserAnswer().trim().split("\\s+") : new String[0];
+                List<Map<String, Object>> enrichedBlanks = new ArrayList<>();
+                for (int i = 0; i < blanks.size(); i++) {
+                    Map<String, Object> blank = new LinkedHashMap<>(blanks.get(i));
+                    String expectedWord = (String) blank.get("word");
+                    String userWord = i < userWords.length ? userWords[i] : "";
+                    blank.put("userAnswer", userWord);
+                    blank.put("correct", userWord.equalsIgnoreCase(expectedWord));
+                    enrichedBlanks.add(blank);
+                }
+                detail.setBlanks(enrichedBlanks);
             } catch (Exception e) {
                 detail.setBlanks(Collections.emptyList());
             }

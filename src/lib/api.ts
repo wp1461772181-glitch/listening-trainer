@@ -276,3 +276,20 @@ export async function apiGetReviewDetail(recordId: number): Promise<ReviewDetail
   return request<ReviewDetail>(`/api/progress/detail/${recordId}`);
 }
 
+// ===== Practice Records API (new history) =====
+
+export interface PracticeRecordEntry {
+  recordId: number;
+  lessonId: number;
+  lessonTitle: string;
+  difficulty: string;
+  score: number;
+  listenCount: number;
+  completedAt: string;
+  sentenceCount: number;
+}
+
+export async function apiGetPracticeRecords(): Promise<PracticeRecordEntry[]> {
+  return request<PracticeRecordEntry[]>('/api/lessons/practice/records');
+}
+

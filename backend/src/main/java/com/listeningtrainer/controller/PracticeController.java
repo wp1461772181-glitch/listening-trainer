@@ -52,4 +52,13 @@ public class PracticeController {
                 user.getId(), lessonId, answers);
         return ResponseEntity.ok(resp);
     }
+
+    /**
+     * List all practice records for current user.
+     */
+    @GetMapping("/records")
+    public ResponseEntity<List<PracticeRecordListResponse>> listRecords(
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(practiceService.listPracticeRecords(user.getId()));
+    }
 }
