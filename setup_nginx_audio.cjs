@@ -1,18 +1,23 @@
+#!/usr/bin/env node
+// Run once on ECS: configure Nginx for /audio/, migrate old audio files
 const { Client } = require('./node_modules/ssh2');
+
 const conn = new Client();
 conn.on('ready', () => {
   console.log('Connected');
   const commands = [
-    'cd /root/listening-trainer && git stash && git pull origin java 2>&1',
-    'cd /root/listening-trainer && sed -i "s/jdbc:mysql:\\/\\/localhost:3306/jdbc:mysql:\\/\\/mysql:3306/" backend/src/main/resources/application-mysql.properties 2>&1',
-    'cd /root/listening-trainer && mkdir -p audio-data 2>&1',
-    'cd /root/listening-trainer/backend && docker build -t listening-trainer . 2>&1',
-    'docker rm -f listening-trainer 2>&1',
-    'docker run -d --name listening-trainer --network app-network -v /var/www/html/listening-trainer/audio:/app/public/audio/lessons -e SPRING_PROFILES_ACTIVE=mysql -e "APP_CORS_ORIGINS=http://localhost:*,http://121.40.47.186,http://121.40.47.186:*,https://listening-trainer-xi.vercel.app,https://*.vercel.app" -p 8080:8080 listening-trainer 2>&1',
+    // 1. Create audio directory
+    'mkdir -p /var/www/html/listening-trainer/audio',
+    // 2. Copy old audio files to new location
+    '[ -d /root/listening-trainer/audio-data ] && cp -r /root/listening-trainer/audio-data/* /var/www/html/listening-trainer/audio/ 2>/dev/null; echo "Audio migrated"',
+    // 3. Add /audio/ location to Nginx if not already present
+    `grep -q 'location /audio/' /etc/nginx/sites-enabled/default || sed -i '/proxy_pass.*8080/i\\    location /audio/ {\\n        alias /var/www/html/listening-trainer/audio/;\\n        expires 30d;\\n        add_header Cache-Control "public, immutable";\\n    }' /etc/nginx/sites-enabled/default`,
+    // 4. Test and reload Nginx
+    'nginx -t && nginx -s reload && echo "Nginx reloaded" || echo "Nginx reload failed"',
   ];
   let i = 0;
   function run() {
-    if (i >= commands.length) { console.log('DONE'); conn.end(); return; }
+    if (i >= commands.length) { console.log('SETUP DONE'); conn.end(); return; }
     const cmd = commands[i];
     console.log('--- [' + (i+1) + '/' + commands.length + '] ' + cmd.substring(0, 80));
     conn.exec(cmd, (err, stream) => {

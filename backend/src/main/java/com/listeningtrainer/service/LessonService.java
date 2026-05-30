@@ -119,8 +119,26 @@ public class LessonService {
             Path audioDir = Paths.get(AUDIO_DIR, String.valueOf(lessonId));
             Files.createDirectories(audioDir);
 
+            // Track speaker for dialogue voice alternation
+            String prevSpeaker = null;
+            String currentVoice = "male";
+
             for (LessonSentence ls : sentences) {
-                String audioPath = generateTtsAudio(ls.getText(), audioDir, ls.getSentenceIndex());
+                // Detect speaker prefix (e.g. "Customer:", "Barista:")
+                String speaker = extractSpeaker(ls.getText());
+                if (prevSpeaker == null) {
+                    // First speaker defaults to male
+                    currentVoice = "male";
+                } else if (!speaker.equals(prevSpeaker)) {
+                    currentVoice = currentVoice.equals("male") ? "female" : "male";
+                }
+                if (speaker != null) {
+                    prevSpeaker = speaker;
+                    ls.setVoice(currentVoice);
+                    sentenceMapper.updateById(ls);
+                }
+
+                String audioPath = generateTtsAudio(ls.getText(), audioDir, ls.getSentenceIndex(), ls.getVoice());
                 ls.setAudioPath(audioPath);
                 sentenceMapper.updateById(ls);
             }
@@ -135,9 +153,24 @@ public class LessonService {
         return getLessonById(lessonId, userId);
     }
 
-    private String generateTtsAudio(String text, Path audioDir, int index) throws Exception {
+    /**
+     * Detect speaker prefix like "Customer:" or "Barista:" from sentence start.
+     * Returns the speaker name (lowercase) or null if no speaker prefix found.
+     */
+    private String extractSpeaker(String text) {
+        int colonIdx = text.indexOf(':');
+        if (colonIdx <= 0 || colonIdx > 20) return null;
+        String prefix = text.substring(0, colonIdx).trim();
+        // Must be a single word (no spaces) to be a speaker label
+        if (prefix.contains(" ")) return null;
+        return prefix.toLowerCase();
+    }
+
+    private String generateTtsAudio(String text, Path audioDir, int index, String voice) throws Exception {
+        // Baidu TTS: lan=en (US English, male default), lan=uk (British English, female sounding)
+        String lang = "female".equals(voice) ? "uk" : "en";
         String encoded = URLEncoder.encode(text, java.nio.charset.StandardCharsets.UTF_8);
-        String urlStr = BAIDU_TTS_URL + "?lan=en&text=" + encoded + "&spd=3";
+        String urlStr = BAIDU_TTS_URL + "?lan=" + lang + "&text=" + encoded + "&spd=3";
 
         HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
         conn.setConnectTimeout(10000);

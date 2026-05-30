@@ -21,7 +21,7 @@ function walk(dir, base = '') {
 const conn = new Client();
 conn.on('ready', () => {
   console.log('SSH connected');
-  conn.exec(`rm -rf ${REMOTE_DIR} && mkdir -p ${REMOTE_DIR}`, (err) => {
+  conn.exec(`cd ${REMOTE_DIR} && { [ -d audio ] && mv audio /tmp/.lt-audio-backup; true; } && rm -rf ${REMOTE_DIR} && mkdir -p ${REMOTE_DIR} && [ -d /tmp/.lt-audio-backup ] && mv /tmp/.lt-audio-backup ${REMOTE_DIR}/audio; true`, (err) => {
     if (err) { console.error('mkdir error:', err); conn.end(); return; }
     console.log('Remote dir prepared');
 

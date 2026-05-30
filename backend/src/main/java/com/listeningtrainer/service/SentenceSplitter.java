@@ -60,7 +60,7 @@ public class SentenceSplitter {
 
                 if (isNoun || isVerb) {
                     Map<String, Object> blank = new LinkedHashMap<>();
-                    blank.put("word", lemma);
+                    blank.put("word", word);
                     blank.put("position", position);
                     blank.put("length", word.length());
                     blanks.add(blank);
