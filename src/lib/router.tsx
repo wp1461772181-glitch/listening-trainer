@@ -7,7 +7,6 @@ import LessonsPage from '../routes/LessonsPage';
 import LessonCreatePage from '../routes/LessonCreatePage';
 import PlayerPage from '../routes/PlayerPage';
 import HistoryPage from '../routes/HistoryPage';
-import LessonHistoryPage from '../routes/LessonHistoryPage';
 import HistoryDetailPage from '../routes/HistoryDetailPage';
 import ReviewPage from '../routes/ReviewPage';
 import SettingsPage from '../routes/SettingsPage';
@@ -77,15 +76,7 @@ export function createAppRouter() {
           ),
         },
         {
-          path: 'history/:lessonId',
-          element: (
-            <AuthGuard>
-              <LessonHistoryPage />
-            </AuthGuard>
-          ),
-        },
-        {
-          path: 'history/detail/:id',
+          path: 'history/:recordId',
           element: (
             <AuthGuard>
               <HistoryDetailPage />

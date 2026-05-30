@@ -104,7 +104,14 @@ export default function ReviewPage() {
         </Card>
         <Card className="p-4">
           <AnswerPanel
-            sentences={detail.sentences}
+            sentences={detail.sentences.map(s => ({
+              ...s,
+              blanks: s.blanks.map(b => ({
+                ...b,
+                position: (b as any).position ?? 0,
+                length: (b as any).length ?? b.word.length,
+              })),
+            }))}
             activeSentenceId={activeSentenceId}
             onSentenceClick={(id) => {
               const s = detail.sentences.find(s => s.sentenceId === id);

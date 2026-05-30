@@ -20,6 +20,12 @@ export default function AnswerPanel({
       <div className="space-y-1.5">
         {sentences.map((s) => {
           const hasError = s.blanks.some(b => !b.correct);
+          // Build blanks with proper position data for ClozeRenderer
+          const clozeBlanks = s.blanks.map(b => ({
+            word: b.word,
+            position: (b as any).position ?? 0,
+            length: (b as any).length ?? b.word.length,
+          }));
           return (
             <button
               key={s.sentenceId}
@@ -34,7 +40,7 @@ export default function AnswerPanel({
             >
               <ClozeRenderer
                 text={s.sentenceText}
-                blanks={s.blanks.map(b => ({ word: b.word, position: 0, length: b.word.length }))}
+                blanks={clozeBlanks}
                 readOnly
                 results={s.blanks}
               />

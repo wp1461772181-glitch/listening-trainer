@@ -1,14 +1,23 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useProgress } from '../context/ProgressContext';
+import { apiGetPracticeRecords } from '../lib/api';
 import TrendChart from '../components/TrendChart';
 import { DifficultyBarChart, AccuracyRadarChart } from '../components/StatsCharts';
+
+interface RecentPractice {
+  recordId: number;
+  lessonId: number;
+  lessonTitle: string;
+  difficulty: string;
+  score: number;
+  completedAt: string;
+}
 
 export default function HomePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { progress } = useProgress();
+  const [recentPractices, setRecentPractices] = useState<RecentPractice[]>([]);
   const [greeting, setGreeting] = useState('');
 
   useEffect(() => {
@@ -18,15 +27,17 @@ export default function HomePage() {
     else setGreeting('Good evening');
   }, []);
 
-  const totalLessons = Object.keys(progress).length;
-  const totalAttempts = Object.values(progress).reduce((sum, p) => sum + p.attempts, 0);
-  const bestOverall = Object.values(progress).reduce((max, p) => Math.max(max, p.bestScore), 0);
+  useEffect(() => {
+    apiGetPracticeRecords()
+      .then(records => {
+        setRecentPractices(records.slice(0, 3));
+      })
+      .catch(() => {});
+  }, []);
 
-  // Last practiced lessons (up to 3)
-  const recentLessons = Object.entries(progress)
-    .sort((a, b) => b[1].date.localeCompare(a[1].date))
-    .slice(0, 3)
-    .map(([lessonId, p]) => ({ lessonId, ...p }));
+  const totalLessons = new Set(recentPractices.map(r => r.lessonId)).size;
+  const totalAttempts = recentPractices.length;
+  const bestOverall = recentPractices.length > 0 ? Math.max(...recentPractices.map(r => r.score)) : 0;
 
   return (
     <div className="space-y-6 animate-fade-in-up">
@@ -40,31 +51,33 @@ export default function HomePage() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <StatCard label="Sessions" value={totalAttempts} />
         <StatCard label="Lessons" value={totalLessons} />
-        <StatCard label="Attempts" value={totalAttempts} />
         <StatCard label="Best Score" value={`${bestOverall}%`} />
         <StatCard label="Streak" value="—" />
       </div>
 
       {/* Recent lessons */}
-      {recentLessons.length > 0 && (
+      {recentPractices.length > 0 && (
         <div>
-          <h2 className="text-sm font-semibold text-text-secondary mb-3 uppercase tracking-wider">Continue Practice</h2>
+          <h2 className="text-sm font-semibold text-text-secondary mb-3 uppercase tracking-wider">Recent Practice</h2>
           <div className="space-y-2">
-            {recentLessons.map((r) => (
+            {recentPractices.map((r) => (
               <button
-                key={r.lessonId}
-                onClick={() => navigate(`/player/${r.lessonId}`)}
+                key={r.recordId}
+                onClick={() => navigate(`/history/${r.recordId}`)}
                 className="flex items-center gap-4 w-full text-left rounded-xl border border-border bg-surface px-4 py-3 hover:-translate-y-[1px] hover:shadow-md transition-all"
               >
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold text-text truncate">{r.lessonId}</div>
+                  <div className="text-sm font-semibold text-text truncate">{r.lessonTitle}</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-lg font-bold tabular-nums text-text">{r.bestScore}%</div>
-                  <div className="text-xs text-text-secondary">{r.date}</div>
+                  <div className="text-lg font-bold tabular-nums text-text">{r.score}%</div>
+                  <div className="text-xs text-text-secondary">{formatDate(r.completedAt)}</div>
                 </div>
-                <div className="text-sm font-medium text-primary">Continue &rarr;</div>
+                <svg className="h-4 w-4 text-text-tertiary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
               </button>
             ))}
           </div>
@@ -138,4 +151,16 @@ function tierDesc(d: string) {
     campus: 'University conversations',
     academic: 'Real lecture scenarios',
   }[d] || '';
+}
+
+function formatDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  const now = new Date();
+  const diff = now.getTime() - d.getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 }

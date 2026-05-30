@@ -117,10 +117,7 @@ export default function PlayerPage() {
     // Store answer
     setAnswers(prev => [...prev, {
       sentenceId: sentenceInfo.sentenceId,
-      sentenceText: sentenceInfo.blanks.reduce((text, blank, i) => {
-        // Simple: just store the full sentence text
-        return '';
-      }, ''),
+      sentenceText: sentenceInfo.sentenceText,
       userAnswer: userInputs.join(' '),
       score,
       blanks: blankResults,
@@ -144,12 +141,7 @@ export default function PlayerPage() {
     if (!lessonId || answers.length === 0) return;
     setSubmitting(true);
     try {
-      // Enrich answers with sentence text from blanks
-      const enrichedAnswers = answers.map(a => ({
-        ...a,
-        sentenceText: sentenceInfo?.blanks?.map(b => b.word).join(' ') || '',
-      }));
-      const resp = await apiCompletePractice(Number(lessonId), enrichedAnswers);
+      const resp = await apiCompletePractice(Number(lessonId), answers);
       setRecordId(resp.recordId);
       setFinalScore(resp.score);
       setCompleted(true);
