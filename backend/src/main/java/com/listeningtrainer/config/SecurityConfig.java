@@ -27,7 +27,8 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/api/lessons/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/lessons").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/lessons/{id}").permitAll()
                 .requestMatchers("/audio/**").permitAll()
                 .requestMatchers("/h2-console/**").permitAll()
                 .anyRequest().authenticated()

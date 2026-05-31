@@ -45,6 +45,9 @@ public class LessonController {
     @GetMapping
     public ResponseEntity<List<LessonResponse>> getLessons(
             @AuthenticationPrincipal User user) {
+        if (user == null) {
+            return ResponseEntity.ok(List.of());
+        }
         return ResponseEntity.ok(lessonService.getLessons(user.getId()));
     }
 
@@ -52,6 +55,9 @@ public class LessonController {
     public ResponseEntity<LessonResponse> getLesson(
             @AuthenticationPrincipal User user,
             @PathVariable Long id) {
+        if (user == null) {
+            return ResponseEntity.status(401).build();
+        }
         LessonResponse lesson = lessonService.getLessonById(id, user.getId());
         if (lesson == null) return ResponseEntity.notFound().build();
         return ResponseEntity.ok(lesson);
