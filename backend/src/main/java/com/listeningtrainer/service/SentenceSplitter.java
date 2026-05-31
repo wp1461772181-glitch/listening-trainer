@@ -117,17 +117,12 @@ public class SentenceSplitter {
 
     /**
      * Minimum score for a word to be eligible as a blank.
-     * Words below this are considered trivial (verbs, simple adjectives, etc.)
-     * and are skipped entirely.
+     * Only words in the DB-backed "core" vocabulary list (score=100) or
+     * words with explicit high scores qualify. Common nouns (NN=15),
+     * proper nouns (NNP=20), adjectives (JJ=10) are all filtered out.
+     * This ensures blanks test actual IELTS vocabulary, not everyday words.
      */
-    private static final int MIN_BLANK_SCORE = 15;
-
-    /**
-     * POS tags to skip even if score >= MIN_BLANK_SCORE.
-     * NNP/NNPS = proper nouns (names, places) — these test spelling/memory,
-     * not vocabulary comprehension. Skip them so blanks focus on content words.
-     */
-    private static final Set<String> SKIP_POS = Set.of("NNP", "NNPS", "CD");
+    private static final int MIN_BLANK_SCORE = 50;
 
     /**
      * Words to always skip even if they pass score threshold.
@@ -185,14 +180,6 @@ public class SentenceSplitter {
 
                 // Skip trivial words regardless of POS score
                 if (SKIP_WORDS.contains(word.toLowerCase())) {
-                    totalWordCount++;
-                    globalWordIdx++;
-                    continue;
-                }
-
-                // Skip proper nouns (names/places) and numbers — these test memory,
-                // not vocabulary comprehension
-                if (SKIP_POS.contains(pos)) {
                     totalWordCount++;
                     globalWordIdx++;
                     continue;
