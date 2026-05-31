@@ -210,7 +210,7 @@ export default function LessonCreatePage() {
         )}
 
         <Card className="p-6">
-          <SentenceEditor sentences={sentences} onChange={handleSaveSentences} />
+          <SentenceEditor sentences={sentences} onChange={handleSaveSentences} lessonId={lessonId ?? undefined} />
         </Card>
       </div>
     );

@@ -239,4 +239,12 @@ public class SentenceSplitter {
     public String splitAndTag(String text) {
         return splitAndTag(text, "paragraph");
     }
+
+    /**
+     * Generate blanks for a single sentence text using current word bank.
+     * Used by regenerate-blanks feature.
+     */
+    public List<Map<String, Object>> generateBlanksForSentence(String text) {
+        return generateBlanks(text, 0, false);
+    }
 }

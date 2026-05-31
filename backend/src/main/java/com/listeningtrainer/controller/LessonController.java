@@ -70,4 +70,19 @@ public class LessonController {
         lessonService.deleteLesson(user.getId(), id);
         return ResponseEntity.ok().build();
     }
+
+    @PostMapping("/{id}/regenerate-blanks")
+    public ResponseEntity<LessonResponse> regenerateBlanks(
+            @AuthenticationPrincipal User user,
+            @PathVariable Long id) {
+        return ResponseEntity.ok(lessonService.regenerateBlanks(user.getId(), id));
+    }
+
+    @PostMapping("/{lessonId}/regenerate-blanks/{sentenceId}")
+    public ResponseEntity<LessonResponse> regenerateSentenceBlanks(
+            @AuthenticationPrincipal User user,
+            @PathVariable Long lessonId,
+            @PathVariable Long sentenceId) {
+        return ResponseEntity.ok(lessonService.regenerateSentenceBlanks(user.getId(), lessonId, sentenceId));
+    }
 }

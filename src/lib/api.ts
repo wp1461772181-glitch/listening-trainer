@@ -353,3 +353,13 @@ export async function apiScoreWord(word: string, pos: string): Promise<{ word: s
   return request(`/api/word-bank/score?word=${encodeURIComponent(word)}&pos=${encodeURIComponent(pos)}`);
 }
 
+// ===== Lesson Blank Regeneration =====
+
+export async function apiRegenerateBlanks(lessonId: number): Promise<Lesson> {
+  return request<Lesson>(`/api/lessons/${lessonId}/regenerate-blanks`, { method: 'POST' });
+}
+
+export async function apiRegenerateSentenceBlanks(lessonId: number, sentenceId: number): Promise<Lesson> {
+  return request<Lesson>(`/api/lessons/${lessonId}/regenerate-blanks/${sentenceId}`, { method: 'POST' });
+}
+

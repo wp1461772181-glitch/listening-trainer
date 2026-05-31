@@ -106,6 +106,67 @@ public class LessonService {
     }
 
     /**
+     * Regenerate blanks for all sentences using current word bank.
+     * Re-runs the scoring algorithm on each sentence's text.
+     */
+    public LessonResponse regenerateBlanks(Long userId, Long lessonId) {
+        Lesson lesson = lessonMapper.selectById(lessonId);
+        if (lesson == null || !lesson.getUserId().equals(userId)) {
+            throw new RuntimeException("Lesson not found");
+        }
+
+        LambdaQueryWrapper<LessonSentence> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(LessonSentence::getLessonId, lessonId)
+               .orderByAsc(LessonSentence::getSentenceIndex);
+        List<LessonSentence> sentences = sentenceMapper.selectList(wrapper);
+
+        for (LessonSentence ls : sentences) {
+            String ttsText = extractTtsText(ls.getText());
+            List<Map<String, Object>> blanks = sentenceSplitter.generateBlanksForSentence(ttsText);
+            if (blanks.size() > 6) {
+                blanks = blanks.subList(0, 6);
+            }
+            try {
+                ls.setBlanksJson(objectMapper.writeValueAsString(blanks));
+            } catch (Exception e) {
+                ls.setBlanksJson("[]");
+            }
+            sentenceMapper.updateById(ls);
+        }
+
+        return getLessonById(lessonId, userId);
+    }
+
+    /**
+     * Regenerate blanks for a single sentence.
+     */
+    public LessonResponse regenerateSentenceBlanks(Long userId, Long lessonId, Long sentenceId) {
+        Lesson lesson = lessonMapper.selectById(lessonId);
+        if (lesson == null || !lesson.getUserId().equals(userId)) {
+            throw new RuntimeException("Lesson not found");
+        }
+
+        LessonSentence ls = sentenceMapper.selectById(sentenceId);
+        if (ls == null || !ls.getLessonId().equals(lessonId)) {
+            throw new RuntimeException("Sentence not found");
+        }
+
+        String ttsText = extractTtsText(ls.getText());
+        List<Map<String, Object>> blanks = sentenceSplitter.generateBlanksForSentence(ttsText);
+        if (blanks.size() > 6) {
+            blanks = blanks.subList(0, 6);
+        }
+        try {
+            ls.setBlanksJson(objectMapper.writeValueAsString(blanks));
+        } catch (Exception e) {
+            ls.setBlanksJson("[]");
+        }
+        sentenceMapper.updateById(ls);
+
+        return getLessonById(lessonId, userId);
+    }
+
+    /**
      * Generate TTS audio for all sentences.
      * Updates status to "ready" on success, "failed" on error.
      */
