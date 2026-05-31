@@ -116,17 +116,7 @@ public class SentenceSplitter {
     }
 
     /**
-     * Minimum score for a word to be eligible as a blank.
-     * Only words in the DB-backed "core" vocabulary list (score=100) or
-     * words with explicit high scores qualify. Common nouns (NN=15),
-     * proper nouns (NNP=20), adjectives (JJ=10) are all filtered out.
-     * This ensures blanks test actual IELTS vocabulary, not everyday words.
-     */
-    private static final int MIN_BLANK_SCORE = 50;
-
-    /**
-     * Words to always skip even if they pass score threshold.
-     * These are conversational filler or trivial content words.
+     * Words to always skip — conversational filler or trivial content words.
      */
     private static final Set<String> SKIP_WORDS = Set.of(
         // Common names used in dialogues
@@ -141,127 +131,143 @@ public class SentenceSplitter {
         "hello","hi","goodbye","bye","sorry","welcome","excuse"
     );
 
+    /** Max blanks per sentence — keeps focus on vocabulary, not every noun. */
+    private static final int MAX_BLANKS_PER_SENTENCE = 1;
+
+    /** Global max blanks per text section — prevents overwhelming the learner. */
+    private static final int GLOBAL_MAX_BLANKS = 12;
+
     /**
-     * Generate blanks from text using a word-bank scoring system.
-     * Candidates are scored by WordBank, then greedily selected with
-     * a minimum spacing of 3 words between any two blanks.
+     * Assign a priority tier to a candidate word.
+     * Lower tier = higher priority (picked first).
      *
-     * A sentence is only blanked if it contains words scoring >= MIN_BLANK_SCORE.
-     * Trivial/conversational sentences (no qualifying words) are left unblanked
-     * and will auto-skip during playback.
+     * Tier 0: DB core vocabulary (score >= 100) — IELTS key words
+     * Tier 1: Nouns >= 6 chars (NN, score >= 15) — important content words
+     * Tier 2: Adjectives/Adverbs >= 6 chars (JJ/RB, score >= 7) — descriptive words
+     * Tier 3: Everything else (verbs, short words) — not selected as blanks
+     */
+    private int computeTier(String word, String pos, int score) {
+        if (score >= 100) return 0; // DB core vocabulary
+        if (pos.startsWith("NN") && word.length() >= 6 && score >= 15) return 1;
+        if ((pos.startsWith("JJ") || pos.startsWith("RB")) && word.length() >= 6 && score >= 7) return 2;
+        return 3;
+    }
+
+    /**
+     * Generate blanks from text using a tiered word-bank scoring system.
      *
-     * Blank count limits:
-     *   <= 3 words:  0 blanks
-     *   4-7 words:   1 blank
-     *   8-15 words:  1-2 blanks
-     *   16-25 words: up to 3 blanks
-     *   > 25 words:  up to 4 blanks
+     * Strategy:
+     *   1. Filter out blacklisted words, short words, trivial words
+     *   2. Assign each candidate a priority tier (see computeTier)
+     *   3. Per sentence: pick the highest-tiered word as the blank (max 1 per sentence)
+     *   4. Global limit: max 12 blanks total
+     *   5. Preserve spacing: blanks at least 3 words apart
+     *
+     * Sentences with no qualifying words return empty blanks —
+     * the player auto-skips them, showing original text + auto-advance.
      */
     private List<Map<String, Object>> generateBlanks(String text, int offsetAdjustment, boolean isDialogue) {
         CoreDocument doc = new CoreDocument(text);
         pipeline.annotate(doc);
 
-        // Collect all candidates with their word index
-        List<Candidate> candidates = new ArrayList<>();
+        // Collect candidates grouped by sentence index
+        List<List<Candidate>> sentenceCandidates = new ArrayList<>();
         int totalWordCount = 0;
-        // Track word index per sentence offset
-        int globalWordIdx = 0;
 
         for (CoreSentence sentence : doc.sentences()) {
             List<CoreLabel> tokens = sentence.tokens();
+            List<Candidate> sentCandidates = new ArrayList<>();
+            int sentWordIdx = 0;
+
             for (CoreLabel token : tokens) {
                 String pos = token.tag();
                 String word = token.word();
                 if (word.length() <= 2) {
                     totalWordCount++;
-                    globalWordIdx++;
+                    sentWordIdx++;
                     continue;
                 }
 
                 // Skip trivial words regardless of POS score
                 if (SKIP_WORDS.contains(word.toLowerCase())) {
                     totalWordCount++;
-                    globalWordIdx++;
+                    sentWordIdx++;
                     continue;
                 }
 
                 int score = wordBank.scoreWord(word, pos);
+                int tier = computeTier(word, pos, score);
 
-                // Only consider words above the minimum blank score threshold
-                if (score >= MIN_BLANK_SCORE) {
-                    candidates.add(new Candidate(
+                // Tier 3 words are not considered for blanks
+                if (tier <= 2) {
+                    sentCandidates.add(new Candidate(
                         word, token.beginPosition() + offsetAdjustment, word.length(),
-                        globalWordIdx, score
+                        sentWordIdx, score, tier
                     ));
                 }
                 totalWordCount++;
-                globalWordIdx++;
+                sentWordIdx++;
             }
+
+            // Sort candidates within each sentence by (tier, score desc, position asc)
+            sentCandidates.sort((a, b) -> {
+                if (a.tier != b.tier) return Integer.compare(a.tier, b.tier);
+                if (a.score != b.score) return Integer.compare(b.score, a.score);
+                return Integer.compare(a.position, b.position);
+            });
+
+            sentenceCandidates.add(sentCandidates);
         }
 
-        // Determine max blanks based on total word count
-        int maxBlanks;
-        if (totalWordCount <= 3) {
-            maxBlanks = 0;
-        } else if (totalWordCount <= 7) {
-            maxBlanks = 1;
-        } else if (totalWordCount <= 15) {
-            maxBlanks = 2;
-        } else if (totalWordCount <= 25) {
-            maxBlanks = 3;
-        } else {
-            maxBlanks = 4;
-        }
-
-        // No qualifying candidates = no blanks (sentence will auto-skip in player)
-        if (candidates.isEmpty() || maxBlanks <= 0) {
-            return new ArrayList<>();
-        }
-
-        // Greedy selection with spacing constraint (min 3 words gap)
+        // Select blanks: 1 per sentence max, 12 global max
         List<Map<String, Object>> blanks = new ArrayList<>();
-        Set<Integer> blockedIndices = new HashSet<>();
+        Set<Integer> globalBlockedIndices = new HashSet<>();
 
-        for (int round = 0; round < maxBlanks && blanks.size() < candidates.size(); round++) {
-            // Find highest-score candidate not blocked
-            Candidate best = null;
-            for (Candidate c : candidates) {
-                if (!blockedIndices.contains(c.wordIndex) && (best == null || c.score > best.score || (c.score == best.score && c.position < best.position))) {
-                    best = c;
+        for (List<Candidate> sentCandidates : sentenceCandidates) {
+            if (blanks.size() >= GLOBAL_MAX_BLANKS) break;
+            if (sentCandidates.isEmpty()) continue;
+
+            // Pick the best candidate for this sentence
+            for (Candidate c : sentCandidates) {
+                // Check spacing constraint against already-selected blanks
+                boolean blocked = false;
+                for (Map<String, Object> existing : blanks) {
+                    int existingPos = (Integer) existing.get("position");
+                    // Approximate: if positions are too close, skip
+                    if (Math.abs(c.position - existingPos) < 20) {
+                        blocked = true;
+                        break;
+                    }
                 }
-            }
-            if (best == null) break;
-
-            blanks.add(best.toMap());
-
-            // Block candidates within +/-3 words of the selected one
-            for (Candidate c : candidates) {
-                if (Math.abs(c.wordIndex - best.wordIndex) <= 3) {
-                    blockedIndices.add(c.wordIndex);
+                if (!blocked) {
+                    blanks.add(c.toMap());
+                    break; // Only 1 blank per sentence
                 }
             }
         }
 
-        // Sort blanks by position (for correct rendering in frontend)
+        // Sort blanks by position
         blanks.sort(Comparator.comparingInt(m -> (Integer) m.get("position")));
 
         return blanks;
     }
 
-    /** Candidate word with scoring. */
+    /** Candidate word with tier-based priority. */
     private static class Candidate {
         final String word;
         final int position;
         final int length;
-        final int wordIndex;
+        final int wordIndex;  // index within the sentence
         final int score;
+        final int tier;       // 0 = best, 3 = not selectable
 
-        Candidate(String word, int position, int length, int wordIndex, int score) {
+        Candidate(String word, int position, int length, int wordIndex, int score, int tier) {
             this.word = word;
             this.position = position;
             this.length = length;
             this.wordIndex = wordIndex;
             this.score = score;
+            this.tier = tier;
         }
 
         Map<String, Object> toMap() {
