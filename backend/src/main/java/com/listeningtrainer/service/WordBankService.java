@@ -220,9 +220,8 @@ public class WordBankService implements ApplicationRunner {
 
     private static final Set<String> DEFAULT_CORE = Set.of(
         "library","gym","campus","station","park","museum","restaurant","airport","hotel","hospital","cinema","theatre","stadium","factory","garden","market","cafe","laboratory","gallery","pool","harbour","supermarket","office","studio","warehouse",
-        "monday","tuesday","wednesday","thursday","friday","saturday","sunday","january","february","march","april","june","july","august","september","october","november","december","morning","weekend","evening","afternoon","midnight","tomorrow","yesterday","fortnight","semester","vacation","holiday",
+        "monday","tuesday","wednesday","thursday","friday","saturday","sunday","january","february","march","april","june","july","august","september","october","november","december","weekend","fortnight","semester","vacation","holiday",
         "seven","eight","nine","ten","eleven","twelve","twenty","thirty","forty","fifty","sixty","seventy","eighty","ninety","hundred","first","second","third","fourth","fifth","sixth","seventh","eighth","ninth","tenth",
-        "routine","schedule","exercise","breakfast","dinner","lunch","bedroom","kitchen","bathroom","furniture","television","computer","telephone","refrigerator","washing","machine","apartment","balcony","ceiling","curtain","blanket","pillow","wardrobe","drawer",
         "lecture","assignment","seminar","tutor","exam","essay","dissertation","research","presentation","deadline","tuition","scholarship","notebook","textbook","bibliography",
         "ticket","luggage","passport","flight","journey","booking","reservation","departure","arrival","destination","itinerary","accommodation","visa","currency","embassy","tourist","souvenir",
         "important","convenient","enjoyable","comfortable","excellent","terrible","difficult","expensive","reasonable","sufficient","adequate","compulsory","optional","maximum","minimum","previous","original","temporary","permanent","regular","flexible"

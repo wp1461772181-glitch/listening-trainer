@@ -128,7 +128,11 @@ public class SentenceSplitter {
         "hundred","thousand","million","first","second","third","fourth","fifth",
         // Trivial content
         "yes","no","right","fine","okay","ok","sure","please","thanks","thank",
-        "hello","hi","goodbye","bye","sorry","welcome","excuse"
+        "hello","hi","goodbye","bye","sorry","welcome","excuse",
+        // Daily life — too common to be meaningful blanks
+        "morning","evening","afternoon","night","today","tomorrow","yesterday","tonight",
+        "breakfast","lunch","dinner","supper","snack",
+        "people","thing","thing","place","time","day","week","month","year"
     );
 
     /** Max blanks per sentence. */
