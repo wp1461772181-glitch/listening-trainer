@@ -13,6 +13,7 @@ interface ClozeRendererProps {
   readOnly?: boolean;
   answers?: string[];
   results?: { word: string; correct: boolean; userAnswer: string }[];
+  onSubmit?: () => void;
 }
 
 export default function ClozeRenderer({
@@ -22,6 +23,7 @@ export default function ClozeRenderer({
   readOnly = false,
   answers = [],
   results,
+  onSubmit,
 }: ClozeRendererProps) {
   const [inputs, setInputs] = useState<string[]>(blanks.map(() => ''));
   const inputRefs = useRef<HTMLInputElement[]>([]);
@@ -29,6 +31,7 @@ export default function ClozeRenderer({
   // Reset inputs when blanks change (new sentence)
   useEffect(() => {
     setInputs(blanks.map(() => ''));
+    inputRefs.current = [];
   }, [blanks]);
 
   useEffect(() => {
@@ -46,11 +49,18 @@ export default function ClozeRenderer({
     });
   }
 
-  function handleKeyDown(idx: number, e: React.KeyboardEvent) {
-    if (e.key === ' ' || e.key === 'Tab') {
+  function handleKeyDown(e: React.KeyboardEvent, sortedIdx: number) {
+    if (e.key === 'Tab') {
       e.preventDefault();
-      const next = inputRefs.current[idx + 1];
-      if (next) next.focus();
+      const next = inputRefs.current[sortedIdx + 1];
+      if (next) {
+        next.focus();
+        next.select();
+      }
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      onSubmit?.();
     }
   }
 
@@ -79,25 +89,25 @@ export default function ClozeRenderer({
       const bg = r.correct ? 'bg-success/10' : 'bg-error/10';
       const border = r.correct ? 'border-success/30' : 'border-error/30';
       parts.push(
-        <span key={i} className={`inline-block min-w-[60px] border-b-2 ${border} ${bg} ${color} px-2 text-center font-semibold mx-1`}>
+        <span key={`b${i}`} className={`inline-block min-w-[60px] border-b-2 ${border} ${bg} ${color} px-2 text-center font-semibold mx-1`}>
           {r.userAnswer || '—'}
         </span>
       );
     } else if (readOnly) {
       parts.push(
-        <span key={i} className="inline-block min-w-[60px] border-b-2 border-border px-2 text-center mx-1">
+        <span key={`b${i}`} className="inline-block min-w-[60px] border-b-2 border-border px-2 text-center mx-1">
           {answers[origIdx] || '—'}
         </span>
       );
     } else {
       parts.push(
         <input
-          key={i}
+          key={`b${i}`}
           ref={el => { if (el) inputRefs.current[i] = el; }}
           type="text"
           value={inputs[origIdx]}
           onChange={(e) => handleChange(origIdx, e.target.value)}
-          onKeyDown={(e) => handleKeyDown(origIdx, e)}
+          onKeyDown={(e) => handleKeyDown(e, i)}
           placeholder="___"
           className="inline-block min-w-[80px] rounded border-b-2 border-primary bg-primary/5 px-2 text-center text-primary focus:outline-none focus:ring-1 focus:ring-primary/30 mx-1"
           style={{ width: `${Math.max(blank.length * 10 + 24, 70)}px` }}

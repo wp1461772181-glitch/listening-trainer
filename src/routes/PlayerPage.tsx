@@ -273,6 +273,13 @@ export default function PlayerPage() {
           text={sentenceInfo.sentenceText}
           blanks={sentenceInfo.blanks}
           onAnswersChange={setUserInputs}
+          onSubmit={() => {
+            if (!sentenceResult) {
+              handleCheck();
+            } else {
+              handleNext();
+            }
+          }}
         />
       </Card>
 

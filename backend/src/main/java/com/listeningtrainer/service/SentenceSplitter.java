@@ -243,8 +243,9 @@ public class SentenceSplitter {
     /**
      * Generate blanks for a single sentence text using current word bank.
      * Used by regenerate-blanks feature.
+     * @param offsetAdjustment offset to add to blank positions (e.g. speaker prefix length)
      */
-    public List<Map<String, Object>> generateBlanksForSentence(String text) {
-        return generateBlanks(text, 0, false);
+    public List<Map<String, Object>> generateBlanksForSentence(String text, int offsetAdjustment) {
+        return generateBlanks(text, offsetAdjustment, false);
     }
 }
