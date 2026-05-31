@@ -105,12 +105,11 @@ public class LessonService {
         return getLessonById(lessonId, userId);
     }
 
-    /** Max blanks per lesson — keeps the exercise focused, not overwhelming. */
-    private static final int MAX_BLANKS_PER_LESSON = 12;
-
     /**
      * Regenerate blanks for all sentences using current word bank.
      * Re-runs the scoring algorithm on each sentence's text.
+     * Adaptive cap: total blanks ≈ sentences/3, clamped to [8, 20].
+     * Trim lowest-priority blanks if over cap, then deduplicate.
      */
     public LessonResponse regenerateBlanks(Long userId, Long lessonId) {
         Lesson lesson = lessonMapper.selectById(lessonId);
@@ -123,27 +122,68 @@ public class LessonService {
                .orderByAsc(LessonSentence::getSentenceIndex);
         List<LessonSentence> sentences = sentenceMapper.selectList(wrapper);
 
-        int blankCount = 0;
-        Set<String> usedWords = new HashSet<>();
+        // 1. Generate all blanks for every sentence
+        Map<Long, List<Map<String, Object>>> blanksBySentence = new LinkedHashMap<>();
+        List<Map<String, Object>> allBlanks = new ArrayList<>(); // flattened with sentenceId
+
         for (LessonSentence ls : sentences) {
-            if (blankCount >= MAX_BLANKS_PER_LESSON) {
-                ls.setBlanksJson("[]");
-                sentenceMapper.updateById(ls);
-                continue;
-            }
             String ttsText = extractTtsText(ls.getText());
             int prefixLen = ls.getText().length() - ttsText.length();
             List<Map<String, Object>> blanks = sentenceSplitter.generateBlanksForSentence(ttsText, prefixLen);
-            if (blanks.size() > 6) {
-                blanks = blanks.subList(0, 6);
+            if (blanks.size() > 6) blanks = blanks.subList(0, 6);
+            blanksBySentence.put(ls.getId(), new ArrayList<>(blanks));
+            for (Map<String, Object> b : blanks) {
+                Map<String, Object> withMeta = new LinkedHashMap<>(b);
+                withMeta.put("sentenceId", ls.getId());
+                allBlanks.add(withMeta);
             }
-            // Deduplicate: skip words already used as blanks
-            blanks = blanks.stream()
-                    .filter(b -> usedWords.add(((String) b.get("word")).toLowerCase()))
-                    .collect(java.util.stream.Collectors.toList());
-            blankCount += blanks.size();
+        }
+
+        // 2. Adaptive cap: ~sentences/3, min 8, max 20
+        int totalSentences = sentences.size();
+        int globalCap = Math.max(8, Math.min(20, totalSentences / 3));
+
+        // 3. Sort by (tier asc, score desc) — trim if over cap
+        allBlanks.sort((a, b) -> {
+            int tierA = (Integer) a.getOrDefault("tier", 4);
+            int tierB = (Integer) b.getOrDefault("tier", 4);
+            if (tierA != tierB) return Integer.compare(tierA, tierB);
+            int scoreA = (Integer) a.getOrDefault("score", 0);
+            int scoreB = (Integer) b.getOrDefault("score", 0);
+            return Integer.compare(scoreB, scoreA);
+        });
+        if (allBlanks.size() > globalCap) {
+            allBlanks = allBlanks.subList(0, globalCap);
+        }
+
+        // 4. Deduplicate: same word → keep first occurrence (highest priority)
+        Set<String> usedWords = new LinkedHashSet<>();
+        List<Map<String, Object>> finalBlanks = new ArrayList<>();
+        for (Map<String, Object> b : allBlanks) {
+            String word = ((String) b.get("word")).toLowerCase();
+            if (usedWords.add(word)) {
+                finalBlanks.add(b);
+            }
+        }
+
+        // 5. Reassign blanks back to sentences
+        Map<Long, List<Map<String, Object>>> trimmedBlanks = new HashMap<>();
+        for (Map<String, Object> b : finalBlanks) {
+            Long sid = (Long) b.get("sentenceId");
+            // Strip tier/score before storing (keep only word/position/length for frontend)
+            Map<String, Object> clean = new LinkedHashMap<>();
+            clean.put("word", b.get("word"));
+            clean.put("position", b.get("position"));
+            clean.put("length", b.get("length"));
+            trimmedBlanks.computeIfAbsent(sid, k -> new ArrayList<>()).add(clean);
+        }
+
+        for (LessonSentence ls : sentences) {
+            List<Map<String, Object>> bl = trimmedBlanks.getOrDefault(ls.getId(), Collections.emptyList());
+            // Re-sort by position for correct rendering
+            bl.sort(Comparator.comparingInt(m -> (Integer) m.get("position")));
             try {
-                ls.setBlanksJson(objectMapper.writeValueAsString(blanks));
+                ls.setBlanksJson(objectMapper.writeValueAsString(bl));
             } catch (Exception e) {
                 ls.setBlanksJson("[]");
             }

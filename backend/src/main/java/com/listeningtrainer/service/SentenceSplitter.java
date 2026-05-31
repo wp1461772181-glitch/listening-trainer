@@ -131,28 +131,25 @@ public class SentenceSplitter {
         "hello","hi","goodbye","bye","sorry","welcome","excuse"
     );
 
-    /** Max blanks per sentence — keeps focus on vocabulary, not every noun. */
-    private static final int MAX_BLANKS_PER_SENTENCE = 1;
-
-    /** Global max blanks per text section — prevents overwhelming the learner. */
-    private static final int GLOBAL_MAX_BLANKS = 12;
+    /** Max blanks per sentence. */
+    private static final int MAX_BLANKS_PER_SENTENCE = 2;
 
     /**
-     * Assign a priority tier to a candidate word.
-     * Lower tier = higher priority (picked first).
+     * Compute a priority tier for a candidate word.
+     * Lower tier = higher priority.
      *
      * Tier 0: DB core vocabulary (score >= 100) — IELTS key words
-     * Tier 1: Adjectives/Adverbs >= 6 chars (JJ/RB, score >= 10) — descriptive words
-     * Tier 2: Other (common nouns, verbs, short words) — not selected
-     *
-     * Common nouns (NN/NNP) are excluded from tiered selection because they all
-     * score the same (15) — there's no way to distinguish "important" nouns
-     * from everyday ones without explicit DB entries.
+     * Tier 1: Nouns >=5 chars (NN/NNS/NNP/NNPS, score >= 15) — content nouns
+     * Tier 2: Adjectives/Adverbs >=5 chars (JJ/RB, score >= 7) — descriptive words
+     * Tier 3: Verbs >=6 chars (VB*, score >= 5) — action words
+     * Tier 4: Other — not selected
      */
-    private int computeTier(String word, String pos, int score) {
-        if (score >= 100) return 0; // DB core vocabulary
-        if ((pos.startsWith("JJ") || pos.startsWith("RB")) && word.length() >= 6 && score >= 10) return 1;
-        return 2;
+    public static int computeTier(String word, String pos, int score) {
+        if (score >= 100) return 0;
+        if ((pos.startsWith("NN")) && word.length() >= 5) return 1;
+        if ((pos.startsWith("JJ") || pos.startsWith("RB")) && word.length() >= 5 && score >= 7) return 2;
+        if (pos.startsWith("VB") && word.length() >= 6 && score >= 5) return 3;
+        return 4;
     }
 
     /**
@@ -161,24 +158,21 @@ public class SentenceSplitter {
      * Strategy:
      *   1. Filter out blacklisted words, short words, trivial words
      *   2. Assign each candidate a priority tier (see computeTier)
-     *   3. Per sentence: pick the highest-tiered word as the blank (max 1 per sentence)
+     *   3. Per sentence: pick up to MAX_BLANKS_PER_SENTENCE highest-tiered words
+     *   4. Skip sentences with too few content words (trivial/greeting sentences)
      *
-     * Global blank cap (max 12) is enforced at the LessonService level, not here,
-     * because this method may be called per-sentence during regeneration.
-     *
-     * Sentences with no qualifying words return empty blanks —
-     * the player auto-skips them, showing original text + auto-advance.
+     * Global blank cap is enforced at the LessonService level, not here.
      */
     private List<Map<String, Object>> generateBlanks(String text, int offsetAdjustment, boolean isDialogue) {
         CoreDocument doc = new CoreDocument(text);
         pipeline.annotate(doc);
 
-        // Collect candidates grouped by sentence
-        List<List<Candidate>> sentenceCandidates = new ArrayList<>();
+        List<Map<String, Object>> blanks = new ArrayList<>();
 
         for (CoreSentence sentence : doc.sentences()) {
             List<CoreLabel> tokens = sentence.tokens();
             List<Candidate> sentCandidates = new ArrayList<>();
+            int contentWordCount = 0;
             int sentWordIdx = 0;
 
             for (CoreLabel token : tokens) {
@@ -188,22 +182,31 @@ public class SentenceSplitter {
                     sentWordIdx++;
                     continue;
                 }
-
                 if (SKIP_WORDS.contains(word.toLowerCase())) {
                     sentWordIdx++;
                     continue;
                 }
 
+                // Count content words (any non-stop word with POS)
+                if (pos != null && !pos.isEmpty()) {
+                    contentWordCount++;
+                }
+
                 int score = wordBank.scoreWord(word, pos);
                 int tier = computeTier(word, pos, score);
 
-                if (tier <= 1) {
+                if (tier <= 3) {
                     sentCandidates.add(new Candidate(
                         word, token.beginPosition() + offsetAdjustment, word.length(),
                         sentWordIdx, score, tier
                     ));
                 }
                 sentWordIdx++;
+            }
+
+            // Skip sentences with too few content words (greetings, trivial)
+            if (contentWordCount < 3) {
+                continue;
             }
 
             // Sort by (tier asc, score desc, position asc)
@@ -213,14 +216,11 @@ public class SentenceSplitter {
                 return Integer.compare(a.position, b.position);
             });
 
-            sentenceCandidates.add(sentCandidates);
-        }
-
-        // Pick best candidate per sentence (max 1)
-        List<Map<String, Object>> blanks = new ArrayList<>();
-        for (List<Candidate> sentCandidates : sentenceCandidates) {
-            if (sentCandidates.isEmpty()) continue;
-            blanks.add(sentCandidates.get(0).toMap());
+            // Take top MAX_BLANKS_PER_SENTENCE
+            int take = Math.min(MAX_BLANKS_PER_SENTENCE, sentCandidates.size());
+            for (int i = 0; i < take; i++) {
+                blanks.add(sentCandidates.get(i).toMap());
+            }
         }
 
         blanks.sort(Comparator.comparingInt(m -> (Integer) m.get("position")));
@@ -234,7 +234,7 @@ public class SentenceSplitter {
         final int length;
         final int wordIndex;  // index within the sentence
         final int score;
-        final int tier;       // 0 = best, 3 = not selectable
+        final int tier;       // 0 = best, 4 = not selectable
 
         Candidate(String word, int position, int length, int wordIndex, int score, int tier) {
             this.word = word;
@@ -250,6 +250,8 @@ public class SentenceSplitter {
             m.put("word", word);
             m.put("position", position);
             m.put("length", length);
+            m.put("tier", tier);
+            m.put("score", score);
             return m;
         }
     }
@@ -265,6 +267,7 @@ public class SentenceSplitter {
      * Generate blanks for a single sentence text using current word bank.
      * Used by regenerate-blanks feature.
      * @param offsetAdjustment offset to add to blank positions (e.g. speaker prefix length)
+     * Each returned map contains: word, position, length, tier, score.
      */
     public List<Map<String, Object>> generateBlanksForSentence(String text, int offsetAdjustment) {
         return generateBlanks(text, offsetAdjustment, false);
