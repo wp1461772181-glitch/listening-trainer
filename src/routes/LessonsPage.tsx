@@ -137,12 +137,20 @@ export default function LessonsPage() {
               </div>
               <div className="flex gap-2 shrink-0">
                 {lesson.status === 'ready' && (
-                  <button
-                    onClick={() => navigate(`/player/${lesson.id}`)}
-                    className="rounded-lg border border-border bg-bg-alt px-4 py-2 text-xs font-semibold text-text hover:border-primary/50 hover:text-primary transition-all"
-                  >
-                    Start
-                  </button>
+                  <>
+                    <button
+                      onClick={() => navigate(`/player/${lesson.id}`)}
+                      className="rounded-lg border border-border bg-bg-alt px-4 py-2 text-xs font-semibold text-text hover:border-primary/50 hover:text-primary transition-all"
+                    >
+                      Start
+                    </button>
+                    <button
+                      onClick={() => navigate(`/lessons/new?id=${lesson.id}&mode=edit`)}
+                      className="rounded-lg border border-border bg-bg-alt px-4 py-2 text-xs font-semibold text-text hover:border-primary/50 hover:text-primary transition-all"
+                    >
+                      Edit
+                    </button>
+                  </>
                 )}
                 {lesson.status === 'drafting' && (
                   <button

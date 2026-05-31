@@ -9,8 +9,9 @@ export default function LessonCreatePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const editId = searchParams.get('id');
+  const isEditMode = searchParams.get('mode') === 'edit';
 
-  const [step, setStep] = useState<'upload' | 'edit' | 'generating' | 'done'>('upload');
+  const [step, setStep] = useState<'upload' | 'edit' | 'generating' | 'done'>(editId ? 'edit' : 'upload');
 
   // Upload form
   const [title, setTitle] = useState('');
@@ -34,11 +35,13 @@ export default function LessonCreatePage() {
           setDifficulty(lesson.difficulty);
           setHint(lesson.hint);
           setSentences(lesson.sentences);
-          setStep('edit');
+          if (isEditMode) {
+            setStep('edit');
+          }
         })
         .catch(() => {});
     }
-  }, [editId]);
+  }, [editId, isEditMode]);
 
   async function handleUpload() {
     if (!title.trim() || !text.trim()) return;
@@ -201,7 +204,14 @@ export default function LessonCreatePage() {
         >
           &larr; Back to Lessons
         </button>
-        <h2 className="text-2xl font-bold text-text">Review Sentences: {title}</h2>
+        <h2 className="text-2xl font-bold text-text">
+          {isEditMode ? 'Edit' : 'Review'} Sentences: {title}
+        </h2>
+        {isEditMode && (
+          <p className="text-sm text-text-secondary">
+            Edit sentences and blanks, then save to regenerate audio.
+          </p>
+        )}
 
         {error && (
           <div className="rounded-lg border border-error/20 bg-error/5 p-3 text-sm text-error">
@@ -236,9 +246,13 @@ export default function LessonCreatePage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h2 className="text-xl font-bold text-text">Lesson Ready!</h2>
+          <h2 className="text-xl font-bold text-text">
+            {isEditMode ? 'Lesson Updated!' : 'Lesson Ready!'}
+          </h2>
           <p className="mt-2 text-sm text-text-secondary">
-            Your lesson "{title}" has been created and audio has been generated.
+            {isEditMode
+              ? `Your lesson "${title}" has been updated and audio regenerated.`
+              : `Your lesson "${title}" has been created and audio has been generated.`}
           </p>
           <div className="mt-6 flex gap-3">
             <button
