@@ -121,6 +121,9 @@ public class SentenceSplitter {
     private static final Set<String> SKIP_WORDS = Set.of(
         // Common names used in dialogues
         "carol","kate","smith","john","mary","peter","sarah","mike","tom","linda",
+        "jenny","david","emma","james","susan","robert","anna","william","lisa","richard",
+        "jennifer","daniel","patricia","michael","elizabeth","williams","brown","jones","miller","wilson",
+        "ball","allen","young","king","wright","scott","hill","green","adams","baker",
         // Numbers (IELTS listening tests spelling of numbers separately)
         "one","two","three","four","five","six","seven","eight","nine","ten",
         "eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen",
@@ -186,7 +189,9 @@ public class SentenceSplitter {
                     sentWordIdx++;
                     continue;
                 }
-                if (SKIP_WORDS.contains(word.toLowerCase())) {
+
+                String lowerWord = word.toLowerCase();
+                if (SKIP_WORDS.contains(lowerWord)) {
                     sentWordIdx++;
                     continue;
                 }
