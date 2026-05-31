@@ -162,8 +162,9 @@ public class SentenceSplitter {
      *   1. Filter out blacklisted words, short words, trivial words
      *   2. Assign each candidate a priority tier (see computeTier)
      *   3. Per sentence: pick the highest-tiered word as the blank (max 1 per sentence)
-     *   4. Global limit: max 12 blanks total
-     *   5. Preserve spacing: blanks at least 3 words apart
+     *
+     * Global blank cap (max 12) is enforced at the LessonService level, not here,
+     * because this method may be called per-sentence during regeneration.
      *
      * Sentences with no qualifying words return empty blanks —
      * the player auto-skips them, showing original text + auto-advance.
@@ -172,9 +173,8 @@ public class SentenceSplitter {
         CoreDocument doc = new CoreDocument(text);
         pipeline.annotate(doc);
 
-        // Collect candidates grouped by sentence index
+        // Collect candidates grouped by sentence
         List<List<Candidate>> sentenceCandidates = new ArrayList<>();
-        int totalWordCount = 0;
 
         for (CoreSentence sentence : doc.sentences()) {
             List<CoreLabel> tokens = sentence.tokens();
@@ -185,14 +185,11 @@ public class SentenceSplitter {
                 String pos = token.tag();
                 String word = token.word();
                 if (word.length() <= 2) {
-                    totalWordCount++;
                     sentWordIdx++;
                     continue;
                 }
 
-                // Skip trivial words regardless of POS score
                 if (SKIP_WORDS.contains(word.toLowerCase())) {
-                    totalWordCount++;
                     sentWordIdx++;
                     continue;
                 }
@@ -200,18 +197,16 @@ public class SentenceSplitter {
                 int score = wordBank.scoreWord(word, pos);
                 int tier = computeTier(word, pos, score);
 
-                // Tier 2 words are not considered for blanks
                 if (tier <= 1) {
                     sentCandidates.add(new Candidate(
                         word, token.beginPosition() + offsetAdjustment, word.length(),
                         sentWordIdx, score, tier
                     ));
                 }
-                totalWordCount++;
                 sentWordIdx++;
             }
 
-            // Sort candidates within each sentence by (tier, score desc, position asc)
+            // Sort by (tier asc, score desc, position asc)
             sentCandidates.sort((a, b) -> {
                 if (a.tier != b.tier) return Integer.compare(a.tier, b.tier);
                 if (a.score != b.score) return Integer.compare(b.score, a.score);
@@ -221,36 +216,14 @@ public class SentenceSplitter {
             sentenceCandidates.add(sentCandidates);
         }
 
-        // Select blanks: 1 per sentence max, 12 global max
+        // Pick best candidate per sentence (max 1)
         List<Map<String, Object>> blanks = new ArrayList<>();
-        Set<Integer> globalBlockedIndices = new HashSet<>();
-
         for (List<Candidate> sentCandidates : sentenceCandidates) {
-            if (blanks.size() >= GLOBAL_MAX_BLANKS) break;
             if (sentCandidates.isEmpty()) continue;
-
-            // Pick the best candidate for this sentence
-            for (Candidate c : sentCandidates) {
-                // Check spacing constraint against already-selected blanks
-                boolean blocked = false;
-                for (Map<String, Object> existing : blanks) {
-                    int existingPos = (Integer) existing.get("position");
-                    // Approximate: if positions are too close, skip
-                    if (Math.abs(c.position - existingPos) < 20) {
-                        blocked = true;
-                        break;
-                    }
-                }
-                if (!blocked) {
-                    blanks.add(c.toMap());
-                    break; // Only 1 blank per sentence
-                }
-            }
+            blanks.add(sentCandidates.get(0).toMap());
         }
 
-        // Sort blanks by position
         blanks.sort(Comparator.comparingInt(m -> (Integer) m.get("position")));
-
         return blanks;
     }
 

@@ -105,6 +105,9 @@ public class LessonService {
         return getLessonById(lessonId, userId);
     }
 
+    /** Max blanks per lesson — keeps the exercise focused, not overwhelming. */
+    private static final int MAX_BLANKS_PER_LESSON = 12;
+
     /**
      * Regenerate blanks for all sentences using current word bank.
      * Re-runs the scoring algorithm on each sentence's text.
@@ -120,13 +123,21 @@ public class LessonService {
                .orderByAsc(LessonSentence::getSentenceIndex);
         List<LessonSentence> sentences = sentenceMapper.selectList(wrapper);
 
+        int blankCount = 0;
         for (LessonSentence ls : sentences) {
+            if (blankCount >= MAX_BLANKS_PER_LESSON) {
+                // Stop adding blanks once we hit the limit; clear remaining
+                ls.setBlanksJson("[]");
+                sentenceMapper.updateById(ls);
+                continue;
+            }
             String ttsText = extractTtsText(ls.getText());
             int prefixLen = ls.getText().length() - ttsText.length();
             List<Map<String, Object>> blanks = sentenceSplitter.generateBlanksForSentence(ttsText, prefixLen);
             if (blanks.size() > 6) {
                 blanks = blanks.subList(0, 6);
             }
+            blankCount += blanks.size();
             try {
                 ls.setBlanksJson(objectMapper.writeValueAsString(blanks));
             } catch (Exception e) {
