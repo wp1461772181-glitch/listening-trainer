@@ -146,16 +146,16 @@ public class SentenceSplitter {
      * Lower tier = higher priority.
      *
      * Tier 0: DB core vocabulary (score >= 100) — IELTS key words
-     * Tier 1: Nouns >=5 chars (NN/NNS/NNP/NNPS, score >= 15) — content nouns
-     * Tier 2: Adjectives/Adverbs >=5 chars (JJ/RB, score >= 7) — descriptive words
-     * Tier 3: Verbs >=6 chars (VB*, score >= 5) — action words
+     * Tier 1: Nouns >=4 chars (NN/NNS/NNP/NNPS, score >= 15) — content nouns
+     * Tier 2: Adjectives/Adverbs >=4 chars (JJ/RB, score >= 7) — descriptive words
+     * Tier 3: Verbs >=5 chars (VB*, score >= 5) — action words
      * Tier 4: Other — not selected
      */
     public static int computeTier(String word, String pos, int score) {
         if (score >= 100) return 0;
-        if ((pos.startsWith("NN")) && word.length() >= 5) return 1;
-        if ((pos.startsWith("JJ") || pos.startsWith("RB")) && word.length() >= 5 && score >= 7) return 2;
-        if (pos.startsWith("VB") && word.length() >= 6 && score >= 5) return 3;
+        if ((pos.startsWith("NN")) && word.length() >= 4) return 1;
+        if ((pos.startsWith("JJ") || pos.startsWith("RB")) && word.length() >= 4 && score >= 7) return 2;
+        if (pos.startsWith("VB") && word.length() >= 5 && score >= 5) return 3;
         return 4;
     }
 
