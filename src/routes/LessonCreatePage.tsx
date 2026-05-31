@@ -25,6 +25,8 @@ export default function LessonCreatePage() {
   const [lessonId, setLessonId] = useState<number | null>(null);
   const [sentences, setSentences] = useState<any[]>([]);
   const [error, setError] = useState('');
+  const [loadingLesson, setLoadingLesson] = useState(editId ? true : false);
+  const [lessonNotFound, setLessonNotFound] = useState(false);
 
   useEffect(() => {
     if (editId) {
@@ -34,12 +36,16 @@ export default function LessonCreatePage() {
           setTitle(lesson.title);
           setDifficulty(lesson.difficulty);
           setHint(lesson.hint);
-          setSentences(lesson.sentences);
+          setSentences(lesson.sentences || []);
           if (isEditMode) {
             setStep('edit');
           }
+          setLoadingLesson(false);
         })
-        .catch(() => {});
+        .catch(() => {
+          setLessonNotFound(true);
+          setLoadingLesson(false);
+        });
     }
   }, [editId, isEditMode]);
 
@@ -196,6 +202,30 @@ export default function LessonCreatePage() {
   }
 
   if (step === 'edit') {
+    // Hide upload form in edit mode — show loading, error, or editor
+    if (loadingLesson) {
+      return (
+        <div className="flex items-center justify-center py-20">
+          <div className="h-8 w-8 rounded-full border-2 border-border border-t-primary animate-spin" />
+          <p className="ml-4 text-sm text-text-secondary">Loading lesson...</p>
+        </div>
+      );
+    }
+
+    if (lessonNotFound) {
+      return (
+        <div className="rounded-xl border border-border bg-surface py-16 text-center">
+          <p className="text-sm text-text-secondary">Lesson not found.</p>
+          <button
+            onClick={() => navigate('/lessons')}
+            className="mt-4 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover transition-all"
+          >
+            Back to Lessons
+          </button>
+        </div>
+      );
+    }
+
     return (
       <div className="space-y-6 animate-fade-in-up">
         <button
