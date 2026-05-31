@@ -124,9 +124,9 @@ public class LessonService {
         List<LessonSentence> sentences = sentenceMapper.selectList(wrapper);
 
         int blankCount = 0;
+        Set<String> usedWords = new HashSet<>();
         for (LessonSentence ls : sentences) {
             if (blankCount >= MAX_BLANKS_PER_LESSON) {
-                // Stop adding blanks once we hit the limit; clear remaining
                 ls.setBlanksJson("[]");
                 sentenceMapper.updateById(ls);
                 continue;
@@ -137,6 +137,10 @@ public class LessonService {
             if (blanks.size() > 6) {
                 blanks = blanks.subList(0, 6);
             }
+            // Deduplicate: skip words already used as blanks
+            blanks = blanks.stream()
+                    .filter(b -> usedWords.add(((String) b.get("word")).toLowerCase()))
+                    .collect(java.util.stream.Collectors.toList());
             blankCount += blanks.size();
             try {
                 ls.setBlanksJson(objectMapper.writeValueAsString(blanks));
