@@ -149,14 +149,14 @@ public class SentenceSplitter {
      * Tier 1: Nouns >=4 chars (NN/NNS/NNP/NNPS, score >= 15) — content nouns
      * Tier 2: Adjectives/Adverbs >=4 chars (JJ/RB, score >= 7) — descriptive words
      * Tier 3: Verbs >=5 chars (VB*, score >= 5) — action words
-     * Tier 4: Other — not selected
+     * Tier 4: Fallback — any word with score > 0 (used when sentence has no higher-tier words)
      */
     public static int computeTier(String word, String pos, int score) {
         if (score >= 100) return 0;
         if ((pos.startsWith("NN")) && word.length() >= 4) return 1;
         if ((pos.startsWith("JJ") || pos.startsWith("RB")) && word.length() >= 4 && score >= 7) return 2;
         if (pos.startsWith("VB") && word.length() >= 5 && score >= 5) return 3;
-        return 4;
+        return score > 0 ? 4 : 99; // tier 4 = fallback, 99 = skip entirely
     }
 
     /**
@@ -204,7 +204,7 @@ public class SentenceSplitter {
                 int score = wordBank.scoreWord(word, pos);
                 int tier = computeTier(word, pos, score);
 
-                if (tier <= 3) {
+                if (tier <= 4) {
                     sentCandidates.add(new Candidate(
                         word, token.beginPosition() + offsetAdjustment, word.length(),
                         sentWordIdx, score, tier
