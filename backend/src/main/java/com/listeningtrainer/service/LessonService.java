@@ -139,36 +139,37 @@ public class LessonService {
             }
         }
 
-        // 2. Adaptive cap: ~sentences/3, min 8, max 20
-        int totalSentences = sentences.size();
-        int globalCap = Math.max(8, Math.min(20, totalSentences / 3));
-
-        // 3. Sort by (tier asc, score desc) — trim if over cap
+        // 2. Deduplicate first: same word → keep only highest-priority occurrence
         allBlanks.sort((a, b) -> {
             int tierA = (Integer) a.getOrDefault("tier", 4);
             int tierB = (Integer) b.getOrDefault("tier", 4);
             if (tierA != tierB) return Integer.compare(tierA, tierB);
             int scoreA = (Integer) a.getOrDefault("score", 0);
             int scoreB = (Integer) b.getOrDefault("score", 0);
-            return Integer.compare(scoreB, scoreA);
+            if (scoreA != scoreB) return Integer.compare(scoreB, scoreA);
+            return Integer.compare(a.getOrDefault("position", 0), b.getOrDefault("position", 0));
         });
-        if (allBlanks.size() > globalCap) {
-            allBlanks = allBlanks.subList(0, globalCap);
-        }
-
-        // 4. Deduplicate: same word → keep first occurrence (highest priority)
         Set<String> usedWords = new LinkedHashSet<>();
-        List<Map<String, Object>> finalBlanks = new ArrayList<>();
+        List<Map<String, Object>> dedupedBlanks = new ArrayList<>();
         for (Map<String, Object> b : allBlanks) {
             String word = ((String) b.get("word")).toLowerCase();
             if (usedWords.add(word)) {
-                finalBlanks.add(b);
+                dedupedBlanks.add(b);
             }
+        }
+
+        // 3. Adaptive cap: ~sentences/2, min 10, max 25
+        int totalSentences = sentences.size();
+        int globalCap = Math.max(10, Math.min(25, totalSentences / 2));
+
+        // 4. Trim if over cap
+        if (dedupedBlanks.size() > globalCap) {
+            dedupedBlanks = dedupedBlanks.subList(0, globalCap);
         }
 
         // 5. Reassign blanks back to sentences
         Map<Long, List<Map<String, Object>>> trimmedBlanks = new HashMap<>();
-        for (Map<String, Object> b : finalBlanks) {
+        for (Map<String, Object> b : dedupedBlanks) {
             Long sid = (Long) b.get("sentenceId");
             // Strip tier/score before storing (keep only word/position/length for frontend)
             Map<String, Object> clean = new LinkedHashMap<>();
