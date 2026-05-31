@@ -279,6 +279,9 @@ public class SentenceSplitter {
      * Each returned map contains: word, position, length, tier, score.
      */
     public List<Map<String, Object>> generateBlanksForSentence(String text, int offsetAdjustment) {
-        return generateBlanks(text, offsetAdjustment, false);
+        List<Map<String, Object>> result = generateBlanks(text, offsetAdjustment, false);
+        // TEMP DEBUG
+        System.out.println("[DEBUG] generateBlanksForSentence: text=\"" + text.substring(0, Math.min(50, text.length())) + "\" → blanks=" + result.size() + " " + result.stream().map(m -> m.get("word") + "(t" + m.get("tier") + ")").collect(java.util.stream.Collectors.joining(", ")));
+        return result;
     }
 }
