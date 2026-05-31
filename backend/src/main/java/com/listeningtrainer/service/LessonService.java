@@ -121,9 +121,9 @@ public class LessonService {
         List<LessonSentence> sentences = sentenceMapper.selectList(wrapper);
 
         for (LessonSentence ls : sentences) {
-            // Pass full text with prefix; positions are already correct since
-            // CoreNLP tokenizes from position 0 of the given string
-            List<Map<String, Object>> blanks = sentenceSplitter.generateBlanksForSentence(ls.getText(), 0);
+            String ttsText = extractTtsText(ls.getText());
+            int prefixLen = ls.getText().length() - ttsText.length();
+            List<Map<String, Object>> blanks = sentenceSplitter.generateBlanksForSentence(ttsText, prefixLen);
             if (blanks.size() > 6) {
                 blanks = blanks.subList(0, 6);
             }
@@ -152,8 +152,9 @@ public class LessonService {
             throw new RuntimeException("Sentence not found");
         }
 
-        // Pass full text with prefix; positions are already correct
-        List<Map<String, Object>> blanks = sentenceSplitter.generateBlanksForSentence(ls.getText(), 0);
+        String ttsText = extractTtsText(ls.getText());
+        int prefixLen = ls.getText().length() - ttsText.length();
+        List<Map<String, Object>> blanks = sentenceSplitter.generateBlanksForSentence(ttsText, prefixLen);
         if (blanks.size() > 6) {
             blanks = blanks.subList(0, 6);
         }
