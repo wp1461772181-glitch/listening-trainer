@@ -120,7 +120,14 @@ public class SentenceSplitter {
      * Words below this are considered trivial (verbs, simple adjectives, etc.)
      * and are skipped entirely.
      */
-    private static final int MIN_BLANK_SCORE = 12;
+    private static final int MIN_BLANK_SCORE = 15;
+
+    /**
+     * POS tags to skip even if score >= MIN_BLANK_SCORE.
+     * NNP/NNPS = proper nouns (names, places) — these test spelling/memory,
+     * not vocabulary comprehension. Skip them so blanks focus on content words.
+     */
+    private static final Set<String> SKIP_POS = Set.of("NNP", "NNPS", "CD");
 
     /**
      * Words to always skip even if they pass score threshold.
@@ -178,6 +185,14 @@ public class SentenceSplitter {
 
                 // Skip trivial words regardless of POS score
                 if (SKIP_WORDS.contains(word.toLowerCase())) {
+                    totalWordCount++;
+                    globalWordIdx++;
+                    continue;
+                }
+
+                // Skip proper nouns (names/places) and numbers — these test memory,
+                // not vocabulary comprehension
+                if (SKIP_POS.contains(pos)) {
                     totalWordCount++;
                     globalWordIdx++;
                     continue;
