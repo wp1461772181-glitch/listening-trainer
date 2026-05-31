@@ -296,8 +296,22 @@ public class LessonService {
         LambdaQueryWrapper<Lesson> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Lesson::getUserId, userId)
                .orderByDesc(Lesson::getCreatedAt);
-        return lessonMapper.selectList(wrapper).stream()
-                .map(l -> toLessonResponse(l, Collections.emptyList()))
+        List<Lesson> lessons = lessonMapper.selectList(wrapper);
+
+        // Load sentence counts for each lesson
+        List<Long> lessonIds = lessons.stream().map(Lesson::getId).toList();
+        Map<Long, Integer> sentenceCounts = new HashMap<>();
+        if (!lessonIds.isEmpty()) {
+            LambdaQueryWrapper<LessonSentence> sw = new LambdaQueryWrapper<>();
+            sw.in(LessonSentence::getLessonId, lessonIds)
+              .select(LessonSentence::getLessonId);
+            for (LessonSentence ls : sentenceMapper.selectList(sw)) {
+                sentenceCounts.merge(ls.getLessonId(), 1, Integer::sum);
+            }
+        }
+
+        return lessons.stream()
+                .map(l -> toLessonResponse(l, Collections.emptyList(), sentenceCounts.getOrDefault(l.getId(), 0)))
                 .toList();
     }
 
@@ -338,7 +352,17 @@ public class LessonService {
         } catch (IOException ignored) {}
     }
 
+    /**
+     * Build response with full sentence details (for single lesson view).
+     */
     private LessonResponse toLessonResponse(Lesson lesson, List<LessonSentence> sentences) {
+        return toLessonResponse(lesson, sentences, sentences.size());
+    }
+
+    /**
+     * Build response with sentence count only (for list view).
+     */
+    private LessonResponse toLessonResponse(Lesson lesson, List<LessonSentence> sentences, int sentenceCount) {
         LessonResponse resp = new LessonResponse();
         resp.setId(lesson.getId());
         resp.setTitle(lesson.getTitle());
@@ -361,6 +385,16 @@ public class LessonService {
                 sr.setBlanks(Collections.emptyList());
             }
             sentenceResponses.add(sr);
+        }
+        // For list view, return placeholder sentences matching the count
+        if (sentences.isEmpty() && sentenceCount > 0) {
+            for (int i = 0; i < sentenceCount; i++) {
+                LessonSentenceResponse sr = new LessonSentenceResponse();
+                sr.setIndex(i);
+                sr.setText("");
+                sr.setBlanks(Collections.emptyList());
+                sentenceResponses.add(sr);
+            }
         }
         resp.setSentences(sentenceResponses);
         return resp;

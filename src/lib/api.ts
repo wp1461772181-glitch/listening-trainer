@@ -38,6 +38,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     throw new Error(body.error || `Request failed: ${res.status}`);
   }
 
+  // Handle empty responses (e.g. DELETE returning 200 OK with no body)
+  if (res.status === 204 || res.headers.get('content-length') === '0') {
+    return undefined as T;
+  }
+
   return res.json();
 }
 

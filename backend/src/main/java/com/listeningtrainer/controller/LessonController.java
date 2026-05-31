@@ -67,8 +67,11 @@ public class LessonController {
     public ResponseEntity<Void> deleteLesson(
             @AuthenticationPrincipal User user,
             @PathVariable Long id) {
+        if (user == null) {
+            return ResponseEntity.status(401).build();
+        }
         lessonService.deleteLesson(user.getId(), id);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{id}/regenerate-blanks")
