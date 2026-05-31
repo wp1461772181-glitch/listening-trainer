@@ -293,3 +293,63 @@ export async function apiGetPracticeRecords(): Promise<PracticeRecordEntry[]> {
   return request<PracticeRecordEntry[]>('/api/lessons/practice/records');
 }
 
+// ===== Word Bank API =====
+
+import type { WordBankEntry, WordBankStats } from '../types';
+
+export async function apiGetWordBankEntries(
+  category = 'all',
+  search = '',
+  offset = 0,
+  limit = 50
+): Promise<WordBankEntry[]> {
+  const params = new URLSearchParams({ category, search, offset: String(offset), limit: String(limit) });
+  return request<WordBankEntry[]>(`/api/word-bank?${params}`);
+}
+
+export async function apiGetWordBankStats(): Promise<WordBankStats> {
+  return request<WordBankStats>('/api/word-bank/stats');
+}
+
+export async function apiCreateWordBankEntry(data: {
+  word: string;
+  category: string;
+  posTag?: string;
+  baseScore?: number;
+  notes?: string;
+}): Promise<WordBankEntry> {
+  return request<WordBankEntry>('/api/word-bank', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiUpdateWordBankEntry(
+  id: number,
+  data: { word?: string; category?: string; posTag?: string; baseScore?: number; notes?: string }
+): Promise<WordBankEntry> {
+  return request<WordBankEntry>(`/api/word-bank/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiDeleteWordBankEntry(id: number): Promise<void> {
+  return request<void>(`/api/word-bank/${id}`, { method: 'DELETE' });
+}
+
+export async function apiBatchDeleteWordBankEntries(ids: number[]): Promise<{ deleted: number }> {
+  return request<{ deleted: number }>('/api/word-bank/batch-delete', {
+    method: 'POST',
+    body: JSON.stringify({ ids }),
+  });
+}
+
+export async function apiRefreshWordBankCache(): Promise<{ status: string }> {
+  return request<{ status: string }>('/api/word-bank/refresh', { method: 'POST' });
+}
+
+export async function apiScoreWord(word: string, pos: string): Promise<{ word: string; posTag: string; score: number; category: string }> {
+  return request(`/api/word-bank/score?word=${encodeURIComponent(word)}&pos=${encodeURIComponent(pos)}`);
+}
+

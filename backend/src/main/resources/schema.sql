@@ -83,3 +83,15 @@ CREATE TABLE IF NOT EXISTS practice_answer (
     blanks_json TEXT,
     INDEX idx_record_id (record_id)
 );
+
+CREATE TABLE IF NOT EXISTS word_bank_entry (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    word VARCHAR(100) NOT NULL UNIQUE,
+    category VARCHAR(20) NOT NULL DEFAULT 'pos_default',
+    pos_tag VARCHAR(10),
+    base_score INT NOT NULL DEFAULT 5,
+    notes VARCHAR(500),
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_category (category)
+);

@@ -1,5 +1,6 @@
 export type Difficulty = 'daily' | 'campus' | 'academic';
 export type LessonStatus = 'drafting' | 'generating' | 'ready' | 'failed';
+export type WordBankCategory = 'blacklist' | 'core' | 'pos_default';
 
 export interface ClozeBlank {
   word: string;
@@ -62,4 +63,21 @@ export interface ReviewDetail {
   listenCount: number;
   completedAt: string;
   sentences: ReviewSentenceDetail[];
+}
+
+export interface WordBankEntry {
+  id: number;
+  word: string;
+  category: WordBankCategory | string;
+  posTag: string | null;
+  baseScore: number;
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface WordBankStats {
+  blacklist: number;
+  core: number;
+  pos_default: number;
+  total: number;
 }

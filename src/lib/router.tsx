@@ -10,6 +10,7 @@ import HistoryPage from '../routes/HistoryPage';
 import HistoryDetailPage from '../routes/HistoryDetailPage';
 import ReviewPage from '../routes/ReviewPage';
 import SettingsPage from '../routes/SettingsPage';
+import WordBankPage from '../routes/WordBankPage';
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -88,6 +89,14 @@ export function createAppRouter() {
           element: (
             <AuthGuard>
               <ReviewPage />
+            </AuthGuard>
+          ),
+        },
+        {
+          path: 'word-bank',
+          element: (
+            <AuthGuard>
+              <WordBankPage />
             </AuthGuard>
           ),
         },

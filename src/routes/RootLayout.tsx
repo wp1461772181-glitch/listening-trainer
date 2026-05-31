@@ -30,6 +30,12 @@ export default function RootLayout() {
                 History
               </button>
               <button
+                onClick={() => navigate('/word-bank')}
+                className="rounded-lg px-3 py-1.5 text-sm text-text-secondary hover:text-text hover:bg-bg-alt transition-all"
+              >
+                Word Bank
+              </button>
+              <button
                 onClick={() => navigate('/settings')}
                 className="rounded-lg px-3 py-1.5 text-sm text-text-secondary hover:text-text hover:bg-bg-alt transition-all"
               >

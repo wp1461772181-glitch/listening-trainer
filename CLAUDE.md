@@ -19,13 +19,15 @@
 
 ---
 
-## 智能挖空算法 (2026-05-30 上线)
+## 智能挖空算法 (2026-05-30 上线, 2026-05-31 DB化)
 
-### 三级评分体系
-后端新增 `WordBank.java` + `SentenceSplitter.java` 改造：
+### 三级评分体系（已迁移到 MySQL）
+词库从硬编码迁移到 `word_bank_entry` 表，由 `WordBankService.java` 管理内存缓存，`WordBank.java` 改为薄代理。
+启动时自动从默认词库种子初始化（首次部署），后续通过管理后台增删改。
+管理页面: `/word-bank`
 
-1. **黑名单** (348词, score=0 → 绝不挖空): 泛义动词/代词/限定词/介词/连词/常见副词/形容词/缩写/语气词
-2. **核心词库** (~150词, score=100+ → 优先挖空): 雅思听力高频答案词（地点/时间/数字/生活/校园/旅行/态度）
+1. **黑名单** (score=0 → 绝不挖空): 泛义动词/代词/限定词/介词/连词/常见副词/形容词/缩写/语气词
+2. **核心词库** (score=100+ → 优先挖空): 雅思听力高频答案词（地点/时间/数字/生活/校园/旅行/态度）
 3. **默认POS评分** (score=5-25): 专有名词=20 > 普通名词=15 > 形容词=10 > 副词=7 > 动词=5
 
 **加分项**: 词长≥6 (+3), 前缀 un/in/dis (+2), 后缀 ful/less/tion (+2)
@@ -111,6 +113,8 @@ lesson_sentence (id, lesson_id, sentence_index, text, audio_path, voice, blanks_
 practice_record (id, lesson_id, user_id, score, listen_count, completed_at)
 practice_answer (id, record_id, sentence_id, sentence_text, user_answer, blanks_json)
   -- sentence_text 快照保证历史记录不被修改
+word_bank_entry (id, word, category, pos_tag, base_score, notes, created_at, updated_at)
+  -- category: blacklist / core / pos_default
 ```
 
 DDL 在 `backend/src/main/resources/schema.sql`
@@ -152,9 +156,21 @@ DDL 在 `backend/src/main/resources/schema.sql`
 | GET | /api/progress/detail/{progressId} | JWT | 练习详情（新格式优先，旧格式fallback） |
 
 ### 静态文件
-| 路径 | 说明 |
-|------|------|
+| 方法 | 路径 | 认证 | 说明 |
+|------|------|------|------|
 | /audio/lessons/{lessonId}/{idx}.mp3 | 预生成的句子音频 |
+
+### 词库管理 (2026-05-31)
+| 方法 | 路径 | 认证 | 说明 |
+|------|------|------|------|
+| GET | /api/word-bank | JWT | 词库列表（?category=&search=&offset=&limit=） |
+| GET | /api/word-bank/stats | JWT | 各分类数量统计 |
+| POST | /api/word-bank | JWT | 新增词条 |
+| PUT | /api/word-bank/{id} | JWT | 编辑词条 |
+| DELETE | /api/word-bank/{id} | JWT | 删除词条 |
+| POST | /api/word-bank/batch-delete | JWT | 批量删除 |
+| POST | /api/word-bank/refresh | JWT | 刷新内存缓存 |
+| GET | /api/word-bank/score?word=&pos= | JWT | 试算单词分数 |
 
 ---
 
@@ -170,6 +186,7 @@ DDL 在 `backend/src/main/resources/schema.sql`
 | `src/routes/LessonCreatePage.tsx` | 上传文本→校对句子→生成音频 |
 | `src/routes/ReviewPage.tsx` | 回顾页（左右分栏：原文+答案+音频同步高亮） |
 | `src/routes/HomePage.tsx` | 首页（统计+课程分类+创建入口） |
+| `src/routes/WordBankPage.tsx` | 词库管理页（统计/搜索/筛选/CRUD/批量删除） |
 | `src/routes/HistoryPage.tsx` | 练习历史总览 |
 | `src/components/ClozeRenderer.tsx` | 挖空渲染（输入框或结果展示） |
 | `src/components/SentenceEditor.tsx` | 句子校对（编辑/合并/删除） |
@@ -195,7 +212,9 @@ DDL 在 `backend/src/main/resources/schema.sql`
 | `service/LessonService.java` | 上传分句→校对→生成百度TTS音频 |
 | `service/PracticeService.java` | 练习逻辑+答案评分+回顾数据 |
 | `service/SentenceSplitter.java` | Stanford CoreNLP 分句+词性标注+智能挖空评分 |
-| `service/WordBank.java` | 三级评分词库: 黑名单348词 + 核心词150 + POS默认评分 |
+| `service/WordBank.java` | 薄代理，委托 WordBankService 评分 |
+| `service/WordBankService.java` | 词库管理：DB↔内存缓存、CRUD、种子初始化 |
+| `controller/WordBankController.java` | /api/word-bank CRUD + 统计 + 刷新 |
 | `service/ProgressService.java` | 旧进度逻辑+回顾代理 |
 | `entity/Lesson.java` | 课程实体 |
 | `entity/LessonSentence.java` | 句子实体 |
@@ -225,9 +244,15 @@ DDL 在 `backend/src/main/resources/schema.sql`
 - 域名 listening-trainer.cyou HTTPS 已启用，证书到期 2026-08-27（www 子域名因阿里云 WAF 拦截放弃）
 - 旧 practice_details 无数据（新练习会生成）
 - 旧版 Dictogloss 代码（Player.tsx 等）已删除，历史记录的 `practice_details` 通过 fallback 保持兼容
-- 词库硬编码在 `WordBank.java` 中，未来计划迁移到 MySQL + 管理后台，根据用户错误率动态调整
 
 ## 开发日志
+
+### 2026-05-31
+- **词库管理后台上线**: WordBank 词库从硬编码迁移到 MySQL `word_bank_entry` 表，`WordBankService` 管理内存缓存
+- **新增 API**: `/api/word-bank` CRUD + stats + refresh + score 试算
+- **前端**: `/word-bank` 管理页面（统计卡片/搜索/分类筛选/CRUD/批量删除），header 导航入口
+- `WordBank.java` 改为薄代理委托 `WordBankService.scoreWord()`，SentenceSplitter 调用不变
+- 启动自动种子初始化（首次部署从默认词库导入）
 
 ### 2026-05-30
 - **智能挖空算法上线**: WordBank 三级评分体系（黑名单/核心词/POS评分），替代原先"所有实词都挖空"的朴素方案
