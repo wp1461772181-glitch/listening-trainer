@@ -142,15 +142,17 @@ public class SentenceSplitter {
      * Lower tier = higher priority (picked first).
      *
      * Tier 0: DB core vocabulary (score >= 100) — IELTS key words
-     * Tier 1: Nouns >= 6 chars (NN, score >= 15) — important content words
-     * Tier 2: Adjectives/Adverbs >= 6 chars (JJ/RB, score >= 7) — descriptive words
-     * Tier 3: Everything else (verbs, short words) — not selected as blanks
+     * Tier 1: Adjectives/Adverbs >= 6 chars (JJ/RB, score >= 10) — descriptive words
+     * Tier 2: Other (common nouns, verbs, short words) — not selected
+     *
+     * Common nouns (NN/NNP) are excluded from tiered selection because they all
+     * score the same (15) — there's no way to distinguish "important" nouns
+     * from everyday ones without explicit DB entries.
      */
     private int computeTier(String word, String pos, int score) {
         if (score >= 100) return 0; // DB core vocabulary
-        if (pos.startsWith("NN") && word.length() >= 6 && score >= 15) return 1;
-        if ((pos.startsWith("JJ") || pos.startsWith("RB")) && word.length() >= 6 && score >= 7) return 2;
-        return 3;
+        if ((pos.startsWith("JJ") || pos.startsWith("RB")) && word.length() >= 6 && score >= 10) return 1;
+        return 2;
     }
 
     /**
@@ -198,8 +200,8 @@ public class SentenceSplitter {
                 int score = wordBank.scoreWord(word, pos);
                 int tier = computeTier(word, pos, score);
 
-                // Tier 3 words are not considered for blanks
-                if (tier <= 2) {
+                // Tier 2 words are not considered for blanks
+                if (tier <= 1) {
                     sentCandidates.add(new Candidate(
                         word, token.beginPosition() + offsetAdjustment, word.length(),
                         sentWordIdx, score, tier
