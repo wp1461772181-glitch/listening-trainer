@@ -132,7 +132,7 @@ public class SentenceSplitter {
         // Daily life — too common to be meaningful blanks
         "morning","evening","afternoon","night","today","tomorrow","yesterday","tonight",
         "breakfast","lunch","dinner","supper","snack",
-        "people","thing","thing","place","time","day","week","month","year"
+        "people","thing","place","time","day","week","month","year"
     );
 
     /** Max blanks per sentence. */
