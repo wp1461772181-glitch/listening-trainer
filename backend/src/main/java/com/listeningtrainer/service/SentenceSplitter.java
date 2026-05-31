@@ -214,7 +214,7 @@ public class SentenceSplitter {
             }
 
             // Skip sentences with too few content words (greetings, trivial)
-            if (contentWordCount < 3) {
+            if (contentWordCount < 2) {
                 continue;
             }
 
