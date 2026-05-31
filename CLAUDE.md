@@ -19,20 +19,45 @@
 
 ---
 
-## 智能挖空算法 (2026-05-30 上线, 2026-05-31 DB化)
+## 智能挖空算法 (2026-05-30 上线, 2026-05-31 五层分级重构)
 
-### 三级评分体系（已迁移到 MySQL）
-词库从硬编码迁移到 `word_bank_entry` 表，由 `WordBankService.java` 管理内存缓存，`WordBank.java` 改为薄代理。
-启动时自动从默认词库种子初始化（首次部署），后续通过管理后台增删改。
-管理页面: `/word-bank`
+### 五层优先级体系（替代原先的全局分数阈值）
 
-1. **黑名单** (score=0 → 绝不挖空): 泛义动词/代词/限定词/介词/连词/常见副词/形容词/缩写/语气词
-2. **核心词库** (score=100+ → 优先挖空): 雅思听力高频答案词（地点/时间/数字/生活/校园/旅行/态度）
-3. **默认POS评分** (score=5-25): 专有名词=20 > 普通名词=15 > 形容词=10 > 副词=7 > 动词=5
+| Tier | 条件 | 示例 |
+|------|------|------|
+| Tier 0 | DB core score >= 100 | emergency, enrollment |
+| Tier 1 | 名词(NN*) >= 4字符 | daughter, address, payment |
+| Tier 2 | 形容词/副词(JJ*/RB*) >= 4字符 且 score>=7 | flexible, information |
+| Tier 3 | 动词(VB*) >= 5字符 且 score>=5 | calling, working |
+| Tier 4 | 其他有分数的词（兜底） | — |
 
-**加分项**: 词长≥6 (+3), 前缀 un/in/dis (+2), 后缀 ful/less/tion (+2)
+**句子重要性过滤**: 内容词(名词/形容词/副词/动词) < 2 的句子不挖空，自动跳过简单衔接句（"It's Kate", "That's right"）
 
-**选择策略**: 贪心选择，两空之间至少间隔3个词，按分数排序
+**每句上限**: 最多2个空
+
+**全局自适应上限**: `Math.max(10, Math.min(25, totalSentences / 2))`
+- 45句 → 最多22个空, 18句 → 最多10个空, 6句 → 最多8个空
+
+**先去重再截断**: 同一个词全局只出现一次，保留优先级最高的那个，去重后再按总量上限截断
+
+### 核心词库精简 (2026-05-31)
+
+从 DEFAULT_CORE 移除了 30+ 日常 trivial 词（morning, evening, breakfast, lunch, dinner, bedroom, kitchen, bathroom, furniture, television, computer, telephone, refrigerator, washing, machine, apartment, balcony, ceiling, curtain, blanket, pillow, wardrobe, drawer, routine, schedule, exercise 等），避免 "Good morning" 的 morning 被挖空这种无意义情况。保留真正核心的高频答案词。
+
+### SKIP_WORDS 扩展
+
+新增日常 trivial 词: morning, evening, breakfast, lunch, dinner, people, thing, place, time, day, week, month, year
+新增常见人名: jenny, david, emma, james, oliver, sophia, liam, mia, noah, ava, ethan, isabella, lucas, charlotte, mason, amelia, logan, harper, jacob, evelyn, michael, abigail, daniel, emily, william, elizabeth, alexander, grace, henry, lily, tom, kate, ben, ann, alice, bob, mary, john, sarah, mike, lisa, peter, jane
+
+### LessonService.regenerateBlanks() 流程
+
+```
+1. 为每句调用 SentenceSplitter.generateBlanksForSentence()，收集全部候选
+2. 全局去重：同一词按 tier → score 排序，保留优先级最高的出现位置
+3. 自适应截断：超过 globalCap 则截断（按优先级排序后的前N个）
+4. 重新分配回各句，去除 tier/score 元数据，只保留 word/position/length
+5. 每句内按 position 排序，更新数据库
+```
 
 ### 前端挖空渲染修复 (2026-05-30)
 **Bug**: API 返回的 blanks 按分数排序而非 position 排序，ClozeRenderer 按接收顺序渲染导致文本偏移/重复
@@ -253,6 +278,8 @@ DDL 在 `backend/src/main/resources/schema.sql`
 - **前端**: `/word-bank` 管理页面（统计卡片/搜索/分类筛选/CRUD/批量删除），header 导航入口
 - `WordBank.java` 改为薄代理委托 `WordBankService.scoreWord()`，SentenceSplitter 调用不变
 - 启动自动种子初始化（首次部署从默认词库导入）
+- **挖空算法五层分级重构**: 废弃全局 MIN_BLANK_SCORE 阈值，改为 Tier 0-4 五级优先级体系；新增句子重要性过滤（contentWordCount < 2 跳过）；每句最多2空，全局自适应上限 `max(10, min(25, sentences/2))`；先去重再截断；核心词库精简30+日常词；SKIP_WORDS 扩展日常词和人名
+- **实际效果**: Lesson 33（45句雅思对话）→ 16句有挖空，22个空，挖空词: daughter, phone, Monday, flexible, payment, invoices, information, sister, meals 等关键信息词
 
 ### 2026-05-30
 - **智能挖空算法上线**: WordBank 三级评分体系（黑名单/核心词/POS评分），替代原先"所有实词都挖空"的朴素方案
