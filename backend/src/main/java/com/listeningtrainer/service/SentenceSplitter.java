@@ -116,9 +116,37 @@ public class SentenceSplitter {
     }
 
     /**
+     * Minimum score for a word to be eligible as a blank.
+     * Words below this are considered trivial (verbs, simple adjectives, etc.)
+     * and are skipped entirely.
+     */
+    private static final int MIN_BLANK_SCORE = 12;
+
+    /**
+     * Words to always skip even if they pass score threshold.
+     * These are conversational filler or trivial content words.
+     */
+    private static final Set<String> SKIP_WORDS = Set.of(
+        // Common names used in dialogues
+        "carol","kate","smith","john","mary","peter","sarah","mike","tom","linda",
+        // Numbers (IELTS listening tests spelling of numbers separately)
+        "one","two","three","four","five","six","seven","eight","nine","ten",
+        "eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen",
+        "twenty","thirty","forty","fifty","sixty","seventy","eighty","ninety",
+        "hundred","thousand","million","first","second","third","fourth","fifth",
+        // Trivial content
+        "yes","no","right","fine","okay","ok","sure","please","thanks","thank",
+        "hello","hi","goodbye","bye","sorry","welcome","excuse"
+    );
+
+    /**
      * Generate blanks from text using a word-bank scoring system.
      * Candidates are scored by WordBank, then greedily selected with
      * a minimum spacing of 3 words between any two blanks.
+     *
+     * A sentence is only blanked if it contains words scoring >= MIN_BLANK_SCORE.
+     * Trivial/conversational sentences (no qualifying words) are left unblanked
+     * and will auto-skip during playback.
      *
      * Blank count limits:
      *   <= 3 words:  0 blanks
@@ -148,8 +176,17 @@ public class SentenceSplitter {
                     continue;
                 }
 
+                // Skip trivial words regardless of POS score
+                if (SKIP_WORDS.contains(word.toLowerCase())) {
+                    totalWordCount++;
+                    globalWordIdx++;
+                    continue;
+                }
+
                 int score = wordBank.scoreWord(word, pos);
-                if (score > 0) { // skip blacklisted (score==0)
+
+                // Only consider words above the minimum blank score threshold
+                if (score >= MIN_BLANK_SCORE) {
                     candidates.add(new Candidate(
                         word, token.beginPosition() + offsetAdjustment, word.length(),
                         globalWordIdx, score
@@ -174,6 +211,7 @@ public class SentenceSplitter {
             maxBlanks = 4;
         }
 
+        // No qualifying candidates = no blanks (sentence will auto-skip in player)
         if (candidates.isEmpty() || maxBlanks <= 0) {
             return new ArrayList<>();
         }
@@ -194,7 +232,7 @@ public class SentenceSplitter {
 
             blanks.add(best.toMap());
 
-            // Block candidates within ±3 words of the selected one
+            // Block candidates within +/-3 words of the selected one
             for (Candidate c : candidates) {
                 if (Math.abs(c.wordIndex - best.wordIndex) <= 3) {
                     blockedIndices.add(c.wordIndex);
