@@ -139,6 +139,8 @@ public class LessonService {
             }
         }
 
+        System.out.println("[REGEN] Total sentences: " + sentences.size() + ", raw blanks generated: " + allBlanks.size());
+
         // 2. Deduplicate first: same word → keep only highest-priority occurrence
         allBlanks.sort((a, b) -> {
             int tierA = (Integer) a.getOrDefault("tier", 4);
@@ -158,14 +160,21 @@ public class LessonService {
             }
         }
 
+        System.out.println("[REGEN] After dedup: " + dedupedBlanks.size());
+
         // 3. Adaptive cap: ~sentences/2, min 10, max 25
         int totalSentences = sentences.size();
         int globalCap = Math.max(10, Math.min(25, totalSentences / 2));
+
+        System.out.println("[REGEN] Global cap: " + globalCap);
 
         // 4. Trim if over cap
         if (dedupedBlanks.size() > globalCap) {
             dedupedBlanks = dedupedBlanks.subList(0, globalCap);
         }
+
+        System.out.println("[REGEN] Final blanks: " + dedupedBlanks.size() + " words: " +
+            dedupedBlanks.stream().map(b -> b.get("word") + "(t" + b.get("tier") + ")").collect(java.util.stream.Collectors.joining(", ")));
 
         // 5. Reassign blanks back to sentences
         Map<Long, List<Map<String, Object>>> trimmedBlanks = new HashMap<>();
