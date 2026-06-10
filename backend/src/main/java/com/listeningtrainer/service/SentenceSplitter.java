@@ -227,6 +227,12 @@ public class SentenceSplitter {
                     continue;
                 }
 
+                // Skip proper nouns (NNP/NNPS) — names, places, organizations
+                if (pos.startsWith("NNP") || pos.startsWith("NNPS")) {
+                    sentWordIdx++;
+                    continue;
+                }
+
                 String lowerWord = word.toLowerCase();
                 if (SKIP_WORDS.contains(lowerWord)) {
                     sentWordIdx++;
