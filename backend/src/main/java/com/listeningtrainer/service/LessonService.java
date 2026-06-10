@@ -5,10 +5,11 @@ import com.fasterxml.jackson.databind.*;
 import com.listeningtrainer.dto.*;
 import com.listeningtrainer.entity.*;
 import com.listeningtrainer.mapper.*;
+import com.listeningtrainer.service.tts.TtsService;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.*;
 
 import java.io.*;
-import java.net.*;
 import java.nio.file.*;
 import java.util.*;
 import java.util.stream.*;
@@ -16,20 +17,25 @@ import java.util.stream.*;
 @Service
 public class LessonService {
 
-    private static final String BAIDU_TTS_URL = "https://fanyi.baidu.com/gettts";
     private static final String AUDIO_DIR = "public/audio/lessons";
 
     private final LessonMapper lessonMapper;
     private final LessonSentenceMapper sentenceMapper;
     private final SentenceSplitter sentenceSplitter;
+    private final TtsService primaryTts;
+    private final TtsService fallbackTts;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public LessonService(LessonMapper lessonMapper,
                          LessonSentenceMapper sentenceMapper,
-                         SentenceSplitter sentenceSplitter) {
+                         SentenceSplitter sentenceSplitter,
+                         @Qualifier("edgeTtsService") TtsService primaryTts,
+                         @Qualifier("baiduTtsService") TtsService fallbackTts) {
         this.lessonMapper = lessonMapper;
         this.sentenceMapper = sentenceMapper;
         this.sentenceSplitter = sentenceSplitter;
+        this.primaryTts = primaryTts;
+        this.fallbackTts = fallbackTts;
     }
 
     /**
@@ -51,7 +57,7 @@ public class LessonService {
 
         try {
             List<Map<String, Object>> sentences = objectMapper.readValue(sentencesJson, List.class);
-            String voice = request.getVoice() != null ? request.getVoice() : "male";
+            String voice = request.getVoice() != null ? request.getVoice() : "female-us";
 
             for (Map<String, Object> s : sentences) {
                 LessonSentence ls = new LessonSentence();
@@ -93,7 +99,7 @@ public class LessonService {
             ls.setLessonId(lessonId);
             ls.setSentenceIndex(edit.getIndex());
             ls.setText(edit.getText());
-            ls.setVoice("male");
+            ls.setVoice("female-us");
             try {
                 ls.setBlanksJson(objectMapper.writeValueAsString(edit.getBlanksJson()));
             } catch (Exception e) {
@@ -248,20 +254,28 @@ public class LessonService {
 
             // Track speaker for dialogue voice alternation
             String prevSpeaker = null;
-            String currentVoice = "male";
+            String currentVoice = "female-us";
+            Map<String, String> speakerVoiceMap = new HashMap<>();
+            String[] voicePool = {"female-us", "male-us", "female-uk", "male-uk"};
+            int voiceIdx = 0;
 
             for (LessonSentence ls : sentences) {
                 // Detect speaker prefix (e.g. "Customer:", "Barista:")
                 String speaker = extractSpeaker(ls.getText());
-                if (prevSpeaker == null && speaker == null) {
-                    // No speaker labels at all, keep default male
-                    currentVoice = "male";
-                } else if (speaker != null && !speaker.equals(prevSpeaker)) {
-                    currentVoice = currentVoice.equals("male") ? "female" : "male";
-                }
+                
                 if (speaker != null) {
+                    // Assign consistent voice to each speaker
+                    if (!speakerVoiceMap.containsKey(speaker)) {
+                        speakerVoiceMap.put(speaker, voicePool[voiceIdx % voicePool.length]);
+                        voiceIdx++;
+                    }
+                    currentVoice = speakerVoiceMap.get(speaker);
                     prevSpeaker = speaker;
+                } else if (prevSpeaker == null) {
+                    // No speaker labels at all, use default
+                    currentVoice = ls.getVoice() != null ? ls.getVoice() : "female-us";
                 }
+                
                 ls.setVoice(currentVoice);
                 sentenceMapper.updateById(ls);
 
@@ -321,29 +335,24 @@ public class LessonService {
     }
 
     private String generateTtsAudio(String text, Path audioDir, int index, String voice) throws Exception {
-        // Baidu TTS: lan=en (US English, male default), lan=uk (British English, female sounding)
-        String lang = "female".equals(voice) ? "uk" : "en";
-        String encoded = URLEncoder.encode(text, java.nio.charset.StandardCharsets.UTF_8);
-        String urlStr = BAIDU_TTS_URL + "?lan=" + lang + "&text=" + encoded + "&spd=3";
-
-        HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
-        conn.setConnectTimeout(10000);
-        conn.setReadTimeout(15000);
-        conn.setRequestProperty("User-Agent",
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
-        conn.connect();
-
-        if (conn.getResponseCode() != 200) {
-            conn.disconnect();
-            throw new RuntimeException("TTS request failed");
-        }
-
         Path outputPath = audioDir.resolve(index + ".mp3");
-        try (InputStream is = conn.getInputStream()) {
-            Files.copy(is, outputPath, StandardCopyOption.REPLACE_EXISTING);
+        
+        // Determine rate based on context (dialogue slightly faster)
+        double rate = 1.0;
+        
+        // Try primary TTS first (Edge TTS)
+        boolean success = primaryTts.generateAudio(text, outputPath, voice, rate);
+        
+        // Fallback to Baidu if Edge fails
+        if (!success) {
+            System.out.println("[TTS] " + primaryTts.getServiceName() + " failed, falling back to " + fallbackTts.getServiceName());
+            success = fallbackTts.generateAudio(text, outputPath, voice, rate);
         }
-
-        conn.disconnect();
+        
+        if (!success) {
+            throw new RuntimeException("TTS generation failed for both services");
+        }
+        
         return "/audio/lessons/" + audioDir.getFileName() + "/" + index + ".mp3";
     }
 

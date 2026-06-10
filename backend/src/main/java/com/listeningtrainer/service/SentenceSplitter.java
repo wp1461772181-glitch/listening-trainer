@@ -4,6 +4,7 @@ import edu.stanford.nlp.ling.*;
 import edu.stanford.nlp.pipeline.*;
 import edu.stanford.nlp.util.*;
 import com.fasterxml.jackson.databind.*;
+import com.listeningtrainer.service.cloze.*;
 import org.springframework.stereotype.*;
 
 import java.util.*;
@@ -17,9 +18,15 @@ public class SentenceSplitter {
     private static final ObjectMapper mapper = new ObjectMapper();
 
     private final WordBank wordBank;
+    private final NumberPatternDetector numberDetector;
+    private final PhrasalVerbDetector phrasalVerbDetector;
 
-    public SentenceSplitter(WordBank wordBank) {
+    public SentenceSplitter(WordBank wordBank, 
+                           NumberPatternDetector numberDetector,
+                           PhrasalVerbDetector phrasalVerbDetector) {
         this.wordBank = wordBank;
+        this.numberDetector = numberDetector;
+        this.phrasalVerbDetector = phrasalVerbDetector;
     }
 
     // Matches speaker prefix like "Customer:", "Barista:", "Speaker 1:", "A:", "B:"
@@ -117,6 +124,7 @@ public class SentenceSplitter {
 
     /**
      * Words to always skip — conversational filler or trivial content words.
+     * Note: Numbers and dates removed - they are now detected by NumberPatternDetector
      */
     private static final Set<String> SKIP_WORDS = Set.of(
         // Common names used in dialogues
@@ -124,11 +132,6 @@ public class SentenceSplitter {
         "jenny","david","emma","james","susan","robert","anna","william","lisa","richard",
         "jennifer","daniel","patricia","michael","elizabeth","williams","brown","jones","miller","wilson",
         "ball","allen","young","king","wright","scott","hill","green","adams","baker",
-        // Numbers (IELTS listening tests spelling of numbers separately)
-        "one","two","three","four","five","six","seven","eight","nine","ten",
-        "eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen",
-        "twenty","thirty","forty","fifty","sixty","seventy","eighty","ninety",
-        "hundred","thousand","million","first","second","third","fourth","fifth",
         // Trivial content
         "yes","no","right","fine","okay","ok","sure","please","thanks","thank",
         "hello","hi","goodbye","bye","sorry","welcome","excuse",
@@ -161,18 +164,17 @@ public class SentenceSplitter {
 
     /**
      * Generate blanks from text using a tiered word-bank scoring system.
-     *
-     * Strategy:
-     *   1. Filter out blacklisted words, short words, trivial words
-     *   2. Assign each candidate a priority tier (see computeTier)
-     *   3. Per sentence: pick up to MAX_BLANKS_PER_SENTENCE highest-tiered words
-     *   4. Skip sentences with too few content words (trivial/greeting sentences)
-     *
-     * Global blank cap is enforced at the LessonService level, not here.
+     * Enhanced with number pattern detection and phrasal verb protection.
      */
     private List<Map<String, Object>> generateBlanks(String text, int offsetAdjustment, boolean isDialogue) {
         CoreDocument doc = new CoreDocument(text);
         pipeline.annotate(doc);
+
+        // Detect number patterns (IELTS key testing points)
+        List<NumberPatternDetector.NumberMatch> numberMatches = numberDetector.detect(text);
+        
+        // Detect phrasal verbs (protect particles)
+        List<PhrasalVerbDetector.PhrasalVerbMatch> phrasalVerbs = phrasalVerbDetector.detect(text);
 
         List<Map<String, Object>> blanks = new ArrayList<>();
 
@@ -185,6 +187,41 @@ public class SentenceSplitter {
             for (CoreLabel token : tokens) {
                 String pos = token.tag();
                 String word = token.word();
+                int tokenStart = token.beginPosition();
+                int tokenEnd = token.endPosition();
+                
+                // Check if token is part of a number pattern
+                boolean isNumber = numberMatches.stream()
+                    .anyMatch(m -> tokenStart >= m.start && tokenEnd <= m.end);
+                
+                if (isNumber) {
+                    // Add as Tier 0 candidate (highest priority)
+                    sentCandidates.add(new Candidate(
+                        word, tokenStart + offsetAdjustment, word.length(),
+                        sentWordIdx, 100, 0
+                    ));
+                    contentWordCount++;
+                    sentWordIdx++;
+                    continue;
+                }
+                
+                // Check if token is a phrasal verb particle (skip it)
+                boolean isPhrasalVerbParticle = phrasalVerbs.stream()
+                    .anyMatch(pv -> {
+                        String[] parts = pv.fullPhrase.split("\\s+");
+                        if (parts.length > 1) {
+                            int verbEnd = pv.start + parts[0].length();
+                            return tokenStart >= verbEnd && tokenEnd <= pv.end;
+                        }
+                        return false;
+                    });
+                
+                if (isPhrasalVerbParticle) {
+                    // Skip particles (up, off, on, etc.)
+                    sentWordIdx++;
+                    continue;
+                }
+                
                 if (word.length() <= 2) {
                     sentWordIdx++;
                     continue;
@@ -206,7 +243,7 @@ public class SentenceSplitter {
 
                 if (tier <= 4) {
                     sentCandidates.add(new Candidate(
-                        word, token.beginPosition() + offsetAdjustment, word.length(),
+                        word, tokenStart + offsetAdjustment, word.length(),
                         sentWordIdx, score, tier
                     ));
                 }

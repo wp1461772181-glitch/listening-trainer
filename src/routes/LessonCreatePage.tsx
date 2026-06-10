@@ -18,7 +18,7 @@ export default function LessonCreatePage() {
   const [difficulty, setDifficulty] = useState<Difficulty>('daily');
   const [hint, setHint] = useState('');
   const [text, setText] = useState('');
-  const [voice, setVoice] = useState<'male' | 'female'>('male');
+  const [voice, setVoice] = useState('female-us');
   const [mode, setMode] = useState<'dialogue' | 'paragraph'>('dialogue');
 
   // Edit state
@@ -133,15 +133,19 @@ export default function LessonCreatePage() {
             <label className="block text-sm font-medium text-text mb-1">Voice</label>
             <select
               value={voice}
-              onChange={e => setVoice(e.target.value as 'male' | 'female')}
+              onChange={e => setVoice(e.target.value)}
               className="w-full rounded-lg border border-border bg-bg p-3 text-sm text-text focus:border-primary/50 focus:outline-none"
             >
-              <option value="male">Male</option>
-              <option value="female">Female</option>
+              <option value="female-us">Female (US)</option>
+              <option value="male-us">Male (US)</option>
+              <option value="female-uk">Female (UK)</option>
+              <option value="male-uk">Male (UK)</option>
+              <option value="female-au">Female (AU)</option>
+              <option value="male-au">Male (AU)</option>
             </select>
             {mode === 'dialogue' && (
               <p className="mt-1 text-xs text-text-tertiary">
-                Voices will auto-alternate between speakers in dialogue mode.
+                Voices will auto-assign to different speakers in dialogue mode.
               </p>
             )}
           </div>
