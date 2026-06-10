@@ -80,9 +80,11 @@ public class WordBankService implements ApplicationRunner {
     public int scoreWord(String word, String posTag) {
         String lower = word.toLowerCase();
 
-        // Filter out pure numbers, punctuation, ellipsis
-        if (lower.matches("[\\d.,$%]+") || lower.equals("...") ||
-            lower.matches("[a-zA-Z]*[-]{2,}[a-zA-Z]*")) return 0;
+        // Filter out ANY word containing digits (pure numbers, currency, percentages, decimals, mixed like "Room202")
+        if (lower.matches(".*\\d.*")) return 0;
+
+        // Filter out pure punctuation, ellipsis, dashes
+        if (lower.equals("...") || lower.matches("[a-zA-Z]*[-]{2,}[a-zA-Z]*")) return 0;
 
         WordBankEntryDTO entry = cache.get(lower);
 
