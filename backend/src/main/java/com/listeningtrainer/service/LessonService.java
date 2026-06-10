@@ -53,7 +53,8 @@ public class LessonService {
         lessonMapper.insert(lesson);
 
         String mode = request.getMode() != null ? request.getMode() : detectMode(request.getText());
-        String sentencesJson = sentenceSplitter.splitAndTag(request.getText(), mode);
+        String difficulty = request.getDifficulty() != null ? request.getDifficulty() : "medium";
+        String sentencesJson = sentenceSplitter.splitAndTag(request.getText(), mode, difficulty);
 
         try {
             List<Map<String, Object>> sentences = objectMapper.readValue(sentencesJson, List.class);

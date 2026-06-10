@@ -47,7 +47,23 @@ public class SentenceSplitter {
      * Paragraph mode: use CoreNLP sentence splitter (split by periods).
      */
     public String splitAndTag(String text, String mode) {
+        return splitAndTag(text, mode, "medium");
+    }
+
+    /**
+     * Split text with difficulty parameter.
+     * @param difficulty "easy" (1 blank/sentence, Tier 0-1 only), "medium" (2 blanks, Tier 0-3), "hard" (3 blanks, all tiers)
+     */
+    public String splitAndTag(String text, String mode, String difficulty) {
         boolean isDialogue = "dialogue".equalsIgnoreCase(mode);
+        String diff = difficulty != null ? difficulty.toLowerCase() : "medium";
+
+        // Per-sentence blank limit based on difficulty
+        int maxBlanksPerSentence = switch (diff) {
+            case "easy" -> 1;
+            case "hard" -> 3;
+            default -> 2; // medium
+        };
 
         List<Map<String, Object>> sentences = new ArrayList<>();
         int idx = 0;
@@ -72,7 +88,7 @@ public class SentenceSplitter {
                     speakerPrefixLength = m.end();
                 }
 
-                List<Map<String, Object>> blanks = generateBlanks(ttsText, speakerPrefixLength, isDialogue);
+                List<Map<String, Object>> blanks = generateBlanks(ttsText, speakerPrefixLength, isDialogue, diff, maxBlanksPerSentence);
 
                 if (blanks.size() > 6) {
                     blanks = blanks.subList(0, 6);
@@ -97,7 +113,7 @@ public class SentenceSplitter {
                 String sentenceText = sentence.text().trim();
                 if (sentenceText.isEmpty()) continue;
 
-                List<Map<String, Object>> blanks = generateBlanks(sentenceText, 0, false);
+                List<Map<String, Object>> blanks = generateBlanks(sentenceText, 0, false, diff, maxBlanksPerSentence);
 
                 if (blanks.size() > 6) {
                     blanks = blanks.subList(0, 6);
@@ -166,7 +182,7 @@ public class SentenceSplitter {
      * Generate blanks from text using a tiered word-bank scoring system.
      * Enhanced with number pattern detection and phrasal verb protection.
      */
-    private List<Map<String, Object>> generateBlanks(String text, int offsetAdjustment, boolean isDialogue) {
+    private List<Map<String, Object>> generateBlanks(String text, int offsetAdjustment, boolean isDialogue, String difficulty, int maxBlanksPerSentence) {
         CoreDocument doc = new CoreDocument(text);
         pipeline.annotate(doc);
 
@@ -247,6 +263,12 @@ public class SentenceSplitter {
                 int score = wordBank.scoreWord(word, pos);
                 int tier = computeTier(word, pos, score);
 
+                // Easy mode: only Tier 0-1 (core words and nouns)
+                if ("easy".equals(difficulty) && tier > 1) {
+                    sentWordIdx++;
+                    continue;
+                }
+
                 if (tier <= 4) {
                     sentCandidates.add(new Candidate(
                         word, tokenStart + offsetAdjustment, word.length(),
@@ -268,8 +290,8 @@ public class SentenceSplitter {
                 return Integer.compare(a.position, b.position);
             });
 
-            // Take top MAX_BLANKS_PER_SENTENCE
-            int take = Math.min(MAX_BLANKS_PER_SENTENCE, sentCandidates.size());
+            // Take top maxBlanksPerSentence (based on difficulty)
+            int take = Math.min(maxBlanksPerSentence, sentCandidates.size());
             for (int i = 0; i < take; i++) {
                 blanks.add(sentCandidates.get(i).toMap());
             }
@@ -277,6 +299,13 @@ public class SentenceSplitter {
 
         blanks.sort(Comparator.comparingInt(m -> (Integer) m.get("position")));
         return blanks;
+    }
+
+    /**
+     * Backward-compatible overload for generateBlanks.
+     */
+    private List<Map<String, Object>> generateBlanks(String text, int offsetAdjustment, boolean isDialogue) {
+        return generateBlanks(text, offsetAdjustment, isDialogue, "medium", MAX_BLANKS_PER_SENTENCE);
     }
 
     /** Candidate word with tier-based priority. */
