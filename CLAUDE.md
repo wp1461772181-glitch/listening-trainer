@@ -19,7 +19,26 @@
 
 ---
 
-## 智能挖空算法 (2026-05-30 上线, 2026-05-31 五层分级重构)
+## 智能挖空算法 (2026-05-30 上线, 2026-05-31 五层分级重构, 2026-06-11 优化)
+
+### 2026-06-11 优化: 挖词合理性 + 难度分级
+
+**专有名词跳过**: 所有 NNP/NNPS 词性统一跳过，不挖人名、地名、机构名（London, John, Paris 等）
+
+**数字/符号过滤**: 所有包含数字的词分数返回0（$20, 2024, 3.5%, Room202 等）
+
+**难度分级策略**:
+
+| 难度 | 每句上限 | 全局上限 | Tier 策略 | 目标 |
+|------|---------|---------|----------|------|
+| easy | 1 | sentences/3 [5,15] | 只挖 Tier 0-1（核心词+名词） | 基本听辨 |
+| medium | 2 | sentences/2 [10,25] | Tier 0-3（默认） | 平衡练习 |
+| hard | 3 | sentences*2/3 [15,35] | Tier 0-4（含兜底） | 高密度练习 |
+
+**代码位置**:
+- `SentenceSplitter.generateBlanks()`: difficulty 参数，easy 模式过滤 Tier > 1
+- `WordBankService.scoreWord()`: 包含数字的词返回0
+- `LessonService.computeAdaptiveCap()`: 难度感知的全局上限
 
 ### 五层优先级体系（替代原先的全局分数阈值）
 
@@ -62,6 +81,32 @@
 ### 前端挖空渲染修复 (2026-05-30)
 **Bug**: API 返回的 blanks 按分数排序而非 position 排序，ClozeRenderer 按接收顺序渲染导致文本偏移/重复
 **修复**: `ClozeRenderer.tsx` 中先按 `position` 排序再渲染，用 `origIdx` 保持与 results/answers/inputs 的正确映射
+
+---
+
+## TTS 逼真化 (2026-06-11)
+
+### 多说话人系统
+- **声音池**: 6个声音 — female_young(JennyNeural), female_mature(AriaNeural), male_young(GuyNeural), male_mature(DavisNeural), female_child(AnaNeural), male_child(AnthonyNeural)
+- **VoiceAllocator**: 根据 speaker name 一致哈希分配声音，确保同一角色始终同一声音
+- **性别推断**: 从 speaker name 推断性别（John→male, Mary→female），未知则用哈希
+
+### SSML 增强
+- **停顿**: 逗号/分号 300ms，句号/感叹号/问号 500ms
+- **语调**: 感叹句 pitch+15% rate=fast，问句 pitch+5%
+- **情感检测**: 自动根据标点/关键词检测 cheerful/sad/angry/friendly 情感
+
+### 实现文件
+- `ssml_builder.py`: Python SSML 构造器（标点→停顿、情感→prosody）
+- `tts_server.py`: Flask TTS 服务，新增 `/api/tts-ssml` 和 `/api/tts-voice` 端点（端口5001）
+- `VoiceAllocator.java`: 多说话人声音分配（一致哈希）
+- `EdgeTtsService.java`: `generateSsmlAudio()` 通过临时文件传入 SSML
+- `LessonService.java`: `buildSSML()` 构建 SSML，`generateAudio()` 集成多说话人+SSML
+
+### 降级策略
+- Edge TTS SSML 失败 → 提取纯文本重试
+- Edge TTS 纯文本失败 → 百度 TTS 降级
+- 百度 TTS 不支持 SSML（`generateSsmlAudio()` 返回 false）
 
 ---
 
@@ -234,11 +279,15 @@ DDL 在 `backend/src/main/resources/schema.sql`
 | `controller/PracticeController.java` | 逐句练习 API |
 | `controller/ProgressController.java` | 回顾详情（新格式优先+旧格式fallback） |
 | `controller/AuthController.java` | 注册/登录/JWT |
-| `service/LessonService.java` | 上传分句→校对→生成百度TTS音频 |
+| `service/LessonService.java` | 上传分句→校对→SSML TTS音频生成（多说话人+情感） |
 | `service/PracticeService.java` | 练习逻辑+答案评分+回顾数据 |
-| `service/SentenceSplitter.java` | Stanford CoreNLP 分句+词性标注+智能挖空评分 |
+| `service/SentenceSplitter.java` | Stanford CoreNLP 分句+词性标注+难度分级挖空 |
+| `service/VoiceAllocator.java` | 多说话人声音分配（一致哈希，性别推断） |
 | `service/WordBank.java` | 薄代理，委托 WordBankService 评分 |
-| `service/WordBankService.java` | 词库管理：DB↔内存缓存、CRUD、种子初始化 |
+| `service/WordBankService.java` | 词库管理：DB↔内存缓存、CRUD、数字过滤 |
+| `service/tts/TtsService.java` | TTS接口：generateAudio + generateSsmlAudio |
+| `service/tts/EdgeTtsService.java` | Edge TTS实现（支持SSML，6声音池） |
+| `service/tts/BaiduTtsService.java` | 百度 TTS降级（不支持SSML） |
 | `controller/WordBankController.java` | /api/word-bank CRUD + 统计 + 刷新 |
 | `service/ProgressService.java` | 旧进度逻辑+回顾代理 |
 | `entity/Lesson.java` | 课程实体 |
