@@ -24,18 +24,21 @@ public class LessonService {
     private final SentenceSplitter sentenceSplitter;
     private final TtsService primaryTts;
     private final TtsService fallbackTts;
+    private final VoiceAllocator voiceAllocator;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public LessonService(LessonMapper lessonMapper,
                          LessonSentenceMapper sentenceMapper,
                          SentenceSplitter sentenceSplitter,
                          @Qualifier("edgeTtsService") TtsService primaryTts,
-                         @Qualifier("baiduTtsService") TtsService fallbackTts) {
+                         @Qualifier("baiduTtsService") TtsService fallbackTts,
+                         VoiceAllocator voiceAllocator) {
         this.lessonMapper = lessonMapper;
         this.sentenceMapper = sentenceMapper;
         this.sentenceSplitter = sentenceSplitter;
         this.primaryTts = primaryTts;
         this.fallbackTts = fallbackTts;
+        this.voiceAllocator = voiceAllocator;
     }
 
     /**
@@ -254,6 +257,7 @@ public class LessonService {
     /**
      * Generate TTS audio for all sentences.
      * Updates status to "ready" on success, "failed" on error.
+     * Uses VoiceAllocator for multi-speaker dialogue and SSML for prosody/emotion.
      */
     public LessonResponse generateAudio(Long userId, Long lessonId) {
         Lesson lesson = lessonMapper.selectById(lessonId);
@@ -273,38 +277,31 @@ public class LessonService {
             Path audioDir = Paths.get(AUDIO_DIR, String.valueOf(lessonId));
             Files.createDirectories(audioDir);
 
-            // Track speaker for dialogue voice alternation
-            String prevSpeaker = null;
-            String currentVoice = "female-us";
-            Map<String, String> speakerVoiceMap = new HashMap<>();
-            String[] voicePool = {"female-us", "male-us", "female-uk", "male-uk"};
-            int voiceIdx = 0;
-
             for (LessonSentence ls : sentences) {
-                // Detect speaker prefix (e.g. "Customer:", "Barista:")
+                // Detect speaker prefix and allocate voice
                 String speaker = extractSpeaker(ls.getText());
-                
+                String voiceKey = "female_young"; // default
+
                 if (speaker != null) {
-                    // Assign consistent voice to each speaker
-                    if (!speakerVoiceMap.containsKey(speaker)) {
-                        speakerVoiceMap.put(speaker, voicePool[voiceIdx % voicePool.length]);
-                        voiceIdx++;
-                    }
-                    currentVoice = speakerVoiceMap.get(speaker);
-                    prevSpeaker = speaker;
-                } else if (prevSpeaker == null) {
-                    // No speaker labels at all, use default
-                    currentVoice = ls.getVoice() != null ? ls.getVoice() : "female-us";
+                    voiceKey = voiceAllocator.allocateVoice(lessonId, speaker);
                 }
-                
-                ls.setVoice(currentVoice);
+
+                ls.setVoice(voiceKey);
                 sentenceMapper.updateById(ls);
 
-                String ttsText = extractTtsText(ls.getText()); // strip speaker prefix for TTS
-                String audioPath = generateTtsAudio(ttsText, audioDir, ls.getSentenceIndex(), ls.getVoice());
+                String ttsText = extractTtsText(ls.getText());
+
+                // Build SSML with prosody/breaks/emotion
+                String ssml = buildSSML(ttsText, mapVoiceKeyToName(voiceKey));
+
+                // Generate audio using SSML
+                String audioPath = generateSsmlAudio(ssml, audioDir, ls.getSentenceIndex());
                 ls.setAudioPath(audioPath);
                 sentenceMapper.updateById(ls);
             }
+
+            // Clear voice cache after generation
+            voiceAllocator.clearCache(lessonId);
 
             lesson.setStatus("ready");
             lessonMapper.updateById(lesson);
@@ -315,6 +312,83 @@ public class LessonService {
         }
 
         return getLessonById(lessonId, userId);
+    }
+
+    /**
+     * Build SSML from text with automatic prosody and breaks.
+     */
+    private String buildSSML(String text, String voiceName) {
+        // Escape XML special characters
+        String escaped = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+
+        // Detect emotion from punctuation
+        String prosodyStart = "";
+        String prosodyEnd = "";
+
+        if (text.contains("!")) {
+            prosodyStart = "<prosody pitch=\"+15%\" rate=\"fast\">";
+            prosodyEnd = "</prosody>";
+        } else if (text.contains("?")) {
+            prosodyStart = "<prosody pitch=\"+5%\">";
+            prosodyEnd = "</prosody>";
+        }
+
+        // Add breaks at punctuation
+        escaped = escaped.replaceAll(",\\s*", ",<break time=\"300ms\"/> ");
+        escaped = escaped.replaceAll("\\.\\s*\\s*", ".<break time=\"500ms\"/> ");
+        escaped = escaped.replaceAll("!\\s*", "!<break time=\"500ms\"/> ");
+        escaped = escaped.replaceAll("\\?\\s*", "?<break time=\"500ms\"/> ");
+
+        return String.format(
+            "<speak version=\"1.0\" xmlns:mstts=\"http://www.w3.org/2001/mstts\">" +
+            "<voice name=\"%s\">%s%s%s</voice></speak>",
+            voiceName, prosodyStart, escaped, prosodyEnd
+        );
+    }
+
+    /**
+     * Map voice key to actual voice name for edge-tts.
+     */
+    private String mapVoiceKeyToName(String voiceKey) {
+        return switch (voiceKey) {
+            case "female_young" -> "en-US-JennyNeural";
+            case "female_mature" -> "en-US-AriaNeural";
+            case "male_young" -> "en-US-GuyNeural";
+            case "male_mature" -> "en-US-DavisNeural";
+            case "female_child" -> "en-US-AnaNeural";
+            case "male_child" -> "en-US-AnthonyNeural";
+            default -> "en-US-JennyNeural";
+        };
+    }
+
+    /**
+     * Generate audio from SSML via Edge TTS.
+     */
+    private String generateSsmlAudio(String ssml, Path audioDir, int index) throws Exception {
+        Path outputPath = audioDir.resolve(index + ".mp3");
+
+        // Try SSML generation via Edge TTS
+        boolean success = primaryTts.generateSsmlAudio(ssml, outputPath);
+
+        // Fallback: extract plain text and use regular TTS
+        if (!success) {
+            System.out.println("[TTS] SSML failed, falling back to plain text TTS");
+            // Extract text from SSML (strip tags)
+            String plainText = ssml.replaceAll("<[^>]+>", "").trim();
+            success = primaryTts.generateAudio(plainText, outputPath, "en-US-JennyNeural", 1.0);
+        }
+
+        if (!success) {
+            // Final fallback to Baidu
+            String plainText = ssml.replaceAll("<[^>]+>", "").trim();
+            success = fallbackTts.generateAudio(plainText, outputPath, "female-us", 1.0);
+        }
+
+        if (!success) {
+            throw new RuntimeException("TTS generation failed for all services");
+        }
+
+        return "/audio/lessons/" + audioDir.getFileName() + "/" + index + ".mp3";
     }
 
     /**
@@ -353,28 +427,6 @@ public class LessonService {
         String prefix = text.substring(0, colonIdx).trim();
         if (prefix.contains(" ") || prefix.length() == 0) return text;
         return text.substring(colonIdx + 1).trim();
-    }
-
-    private String generateTtsAudio(String text, Path audioDir, int index, String voice) throws Exception {
-        Path outputPath = audioDir.resolve(index + ".mp3");
-        
-        // Determine rate based on context (dialogue slightly faster)
-        double rate = 1.0;
-        
-        // Try primary TTS first (Edge TTS)
-        boolean success = primaryTts.generateAudio(text, outputPath, voice, rate);
-        
-        // Fallback to Baidu if Edge fails
-        if (!success) {
-            System.out.println("[TTS] " + primaryTts.getServiceName() + " failed, falling back to " + fallbackTts.getServiceName());
-            success = fallbackTts.generateAudio(text, outputPath, voice, rate);
-        }
-        
-        if (!success) {
-            throw new RuntimeException("TTS generation failed for both services");
-        }
-        
-        return "/audio/lessons/" + audioDir.getFileName() + "/" + index + ".mp3";
     }
 
     /**

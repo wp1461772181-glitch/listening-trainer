@@ -49,6 +49,12 @@ public class BaiduTtsService implements TtsService {
     }
 
     @Override
+    public boolean generateSsmlAudio(String ssml, Path outputPath) {
+        // Baidu TTS doesn't support SSML - return false to trigger fallback
+        return false;
+    }
+
+    @Override
     public String getServiceName() {
         return "Baidu TTS";
     }

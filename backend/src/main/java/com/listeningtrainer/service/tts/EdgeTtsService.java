@@ -27,7 +27,7 @@ public class EdgeTtsService implements TtsService {
         try {
             String edgeVoice = VOICE_MAP.getOrDefault(voice, "en-US-JennyNeural");
             String rateStr = String.format("%+.0f%%", (rate - 1.0) * 100);
-            
+
             // Build edge-tts command
             ProcessBuilder pb = new ProcessBuilder(
                 "/Users/wupeng/Library/Python/3.9/bin/edge-tts",
@@ -36,22 +36,62 @@ public class EdgeTtsService implements TtsService {
                 "--text", text,
                 "--write-media", outputPath.toString()
             );
-            
+
             pb.redirectErrorStream(true);
             Process process = pb.start();
-            
+
             // Read output
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
             String line;
             while ((line = reader.readLine()) != null) {
                 System.out.println("[edge-tts] " + line);
             }
-            
+
             int exitCode = process.waitFor();
             return exitCode == 0 && Files.exists(outputPath);
         } catch (Exception e) {
             e.printStackTrace();
             return false;
+        }
+    }
+
+    @Override
+    public boolean generateSsmlAudio(String ssml, Path outputPath) {
+        Path ssmlFile = null;
+        try {
+            // Write SSML to temp file
+            ssmlFile = Files.createTempFile("tts-", ".ssml");
+            Files.writeString(ssmlFile, ssml);
+
+            // Build edge-tts command with SSML file
+            ProcessBuilder pb = new ProcessBuilder(
+                "/Users/wupeng/Library/Python/3.9/bin/edge-tts",
+                "--file", ssmlFile.toString(),
+                "--write-media", outputPath.toString()
+            );
+
+            pb.redirectErrorStream(true);
+            Process process = pb.start();
+
+            // Read output
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                System.out.println("[edge-tts-ssml] " + line);
+            }
+
+            int exitCode = process.waitFor();
+            return exitCode == 0 && Files.exists(outputPath);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        } finally {
+            // Clean up temp file
+            if (ssmlFile != null) {
+                try {
+                    Files.deleteIfExists(ssmlFile);
+                } catch (IOException ignored) {}
+            }
         }
     }
 
