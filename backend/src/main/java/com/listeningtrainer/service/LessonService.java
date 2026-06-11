@@ -115,7 +115,10 @@ public class LessonService {
     /**
      * Regenerate blanks for all sentences using current word bank.
      * Re-runs the scoring algorithm on each sentence's text.
-     * Adaptive cap: total blanks ≈ sentences/3, clamped to [8, 20].
+     * Difficulty-aware adaptive cap:
+     * - Easy: sentences/3, range [5, 15]
+     * - Medium: sentences/2, range [10, 25]
+     * - Hard: sentences*2/3, range [15, 35]
      * Trim lowest-priority blanks if over cap, then deduplicate.
      */
     public LessonResponse regenerateBlanks(Long userId, Long lessonId) {
@@ -123,6 +126,9 @@ public class LessonService {
         if (lesson == null || !lesson.getUserId().equals(userId)) {
             throw new RuntimeException("Lesson not found");
         }
+
+        // Get difficulty from lesson
+        String difficulty = lesson.getDifficulty() != null ? lesson.getDifficulty() : "medium";
 
         LambdaQueryWrapper<LessonSentence> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(LessonSentence::getLessonId, lessonId)
@@ -165,9 +171,9 @@ public class LessonService {
             }
         }
 
-        // 3. Adaptive cap: ~sentences/2, min 10, max 25
+        // 3. Adaptive cap based on difficulty
         int totalSentences = sentences.size();
-        int globalCap = Math.max(10, Math.min(25, totalSentences / 2));
+        int globalCap = computeAdaptiveCap(totalSentences, difficulty);
 
         // 4. Trim if over cap
         if (dedupedBlanks.size() > globalCap) {
@@ -199,6 +205,20 @@ public class LessonService {
         }
 
         return getLessonById(lessonId, userId);
+    }
+
+    /**
+     * Compute adaptive blank cap based on difficulty.
+     * - Easy: sentences/3, range [5, 15]
+     * - Medium: sentences/2, range [10, 25]
+     * - Hard: sentences*2/3, range [15, 35]
+     */
+    private int computeAdaptiveCap(int totalSentences, String difficulty) {
+        return switch (difficulty) {
+            case "easy" -> Math.max(5, Math.min(15, totalSentences / 3));
+            case "hard" -> Math.max(15, Math.min(35, totalSentences * 2 / 3));
+            default -> Math.max(10, Math.min(25, totalSentences / 2)); // medium
+        };
     }
 
     /**
