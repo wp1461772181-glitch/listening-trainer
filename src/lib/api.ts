@@ -24,11 +24,23 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  const url = `${API_BASE}${path}`;
+  console.log('[api] fetching:', url, 'method:', options.method || 'GET');
+  const res = await fetch(url, {
+    ...options,
+    headers,
+    cache: 'no-store',
+  });
+  console.log('[api] response:', url, res.status, res.ok);
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error || `Request failed: ${res.status}`);
+  }
+
+  // Handle empty responses (e.g. DELETE returning 200 OK with no body)
+  if (res.status === 204 || res.headers.get('content-length') === '0') {
+    return undefined as T;
   }
 
   return res.json();
@@ -180,3 +192,179 @@ export async function apiChangePassword(currentPassword: string, newPassword: st
     body: JSON.stringify({ currentPassword, newPassword }),
   });
 }
+
+// ===== Lesson Management API =====
+
+import type { Lesson, ReviewDetail, LessonStatus } from '../types';
+
+export async function apiCreateLesson(data: {
+  title: string;
+  difficulty: string;
+  hint?: string;
+  text: string;
+  voice?: string;
+}): Promise<Lesson> {
+  return request<Lesson>('/api/lessons', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiUpdateLessonSentences(
+  lessonId: number,
+  sentences: { index: number; text: string; blanksJson: any[] }[]
+): Promise<Lesson> {
+  return request<Lesson>(`/api/lessons/${lessonId}/sentences`, {
+    method: 'PUT',
+    body: JSON.stringify(sentences),
+  });
+}
+
+export async function apiGenerateAudio(lessonId: number): Promise<Lesson> {
+  return request<Lesson>(`/api/lessons/${lessonId}/generate`, {
+    method: 'POST',
+  });
+}
+
+export async function apiGetAllLessons(): Promise<Lesson[]> {
+  return request<Lesson[]>('/api/lessons');
+}
+
+export async function apiGetLesson(lessonId: number): Promise<Lesson> {
+  return request<Lesson>(`/api/lessons/${lessonId}`);
+}
+
+export async function apiDeleteLesson(lessonId: number): Promise<void> {
+  return request<void>(`/api/lessons/${lessonId}`, {
+    method: 'DELETE',
+  });
+}
+
+// ===== Practice API =====
+
+export interface SentencePracticeInfo {
+  sentenceId: number;
+  index: number;
+  totalSentences: number;
+  audioPath: string;
+  sentenceText: string;
+  blanks: { word: string; position: number; length: number }[];
+}
+
+export async function apiGetSentence(lessonId: number, sentenceIdx: number): Promise<SentencePracticeInfo> {
+  return request<SentencePracticeInfo>(`/api/lessons/${lessonId}/practice?sentenceIdx=${sentenceIdx}&_=${Date.now()}`);
+}
+
+export async function apiSubmitSentenceAnswer(
+  lessonId: number,
+  data: { sentenceId: number; userAnswer: string }
+): Promise<{ sentenceId: number; score: number; blanks: { word: string; correct: boolean; userAnswer: string }[] }> {
+  return request(`/api/lessons/${lessonId}/practice/submit`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiCompletePractice(
+  lessonId: number,
+  answers: { sentenceId: number; sentenceText: string; userAnswer: string; score: number; blanks: any[] }[]
+): Promise<{ recordId: number; score: number }> {
+  return request(`/api/lessons/${lessonId}/practice/complete`, {
+    method: 'POST',
+    body: JSON.stringify({ answers }),
+  });
+}
+
+// ===== Review API =====
+
+export async function apiGetReviewDetail(recordId: number): Promise<ReviewDetail> {
+  return request<ReviewDetail>(`/api/progress/detail/${recordId}`);
+}
+
+// ===== Practice Records API (new history) =====
+
+export interface PracticeRecordEntry {
+  recordId: number;
+  lessonId: number;
+  lessonTitle: string;
+  difficulty: string;
+  score: number;
+  listenCount: number;
+  completedAt: string;
+  sentenceCount: number;
+}
+
+export async function apiGetPracticeRecords(): Promise<PracticeRecordEntry[]> {
+  return request<PracticeRecordEntry[]>('/api/lessons/practice/records');
+}
+
+// ===== Word Bank API =====
+
+import type { WordBankEntry, WordBankStats } from '../types';
+
+export async function apiGetWordBankEntries(
+  category = 'all',
+  search = '',
+  offset = 0,
+  limit = 50
+): Promise<WordBankEntry[]> {
+  const params = new URLSearchParams({ category, search, offset: String(offset), limit: String(limit) });
+  return request<WordBankEntry[]>(`/api/word-bank?${params}`);
+}
+
+export async function apiGetWordBankStats(): Promise<WordBankStats> {
+  return request<WordBankStats>('/api/word-bank/stats');
+}
+
+export async function apiCreateWordBankEntry(data: {
+  word: string;
+  category: string;
+  posTag?: string;
+  baseScore?: number;
+  notes?: string;
+}): Promise<WordBankEntry> {
+  return request<WordBankEntry>('/api/word-bank', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiUpdateWordBankEntry(
+  id: number,
+  data: { word?: string; category?: string; posTag?: string; baseScore?: number; notes?: string }
+): Promise<WordBankEntry> {
+  return request<WordBankEntry>(`/api/word-bank/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiDeleteWordBankEntry(id: number): Promise<void> {
+  return request<void>(`/api/word-bank/${id}`, { method: 'DELETE' });
+}
+
+export async function apiBatchDeleteWordBankEntries(ids: number[]): Promise<{ deleted: number }> {
+  return request<{ deleted: number }>('/api/word-bank/batch-delete', {
+    method: 'POST',
+    body: JSON.stringify({ ids }),
+  });
+}
+
+export async function apiRefreshWordBankCache(): Promise<{ status: string }> {
+  return request<{ status: string }>('/api/word-bank/refresh', { method: 'POST' });
+}
+
+export async function apiScoreWord(word: string, pos: string): Promise<{ word: string; posTag: string; score: number; category: string }> {
+  return request(`/api/word-bank/score?word=${encodeURIComponent(word)}&pos=${encodeURIComponent(pos)}`);
+}
+
+// ===== Lesson Blank Regeneration =====
+
+export async function apiRegenerateBlanks(lessonId: number): Promise<Lesson> {
+  return request<Lesson>(`/api/lessons/${lessonId}/regenerate-blanks`, { method: 'POST' });
+}
+
+export async function apiRegenerateSentenceBlanks(lessonId: number, sentenceId: number): Promise<Lesson> {
+  return request<Lesson>(`/api/lessons/${lessonId}/regenerate-blanks/${sentenceId}`, { method: 'POST' });
+}
+

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -12,9 +12,8 @@ import {
   Filler,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
-import { useProgress } from '../context/ProgressContext';
+import { apiGetPracticeRecords } from '../lib/api';
 import Card from '../components/ui/Card';
-import { formatDate } from '../utils/formatDate';
 
 ChartJS.register(
   CategoryScale,
@@ -33,19 +32,25 @@ interface TrendChartProps {
 }
 
 export default function TrendChart({ days = 7 }: TrendChartProps) {
-  const { progress } = useProgress();
+  const [records, setRecords] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiGetPracticeRecords()
+      .then(setRecords)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
 
   const chartData = useMemo(() => {
-    const entries = Object.entries(progress)
-      .map(([lessonId, p]) => ({ lessonId, ...p }))
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .slice(-days);
+    if (records.length === 0) return null;
 
-    if (entries.length === 0) return null;
-
-    const labels = entries.map((e) => formatDate(e.date));
+    const entries = records.slice(0, days).reverse();
+    const labels = entries.map((e) => {
+      const d = new Date(e.completedAt);
+      return `${d.getMonth() + 1}/${d.getDate()}`;
+    });
     const scores = entries.map((e) => e.score);
-    const bestScores = entries.map((e) => e.bestScore);
 
     return {
       labels,
@@ -61,19 +66,17 @@ export default function TrendChart({ days = 7 }: TrendChartProps) {
           pointHoverRadius: 5,
           borderWidth: 2,
         },
-        {
-          label: 'Best',
-          data: bestScores,
-          borderColor: '#10B981',
-          backgroundColor: 'transparent',
-          borderDash: [4, 4],
-          tension: 0.3,
-          pointRadius: 2,
-          borderWidth: 1.5,
-        },
       ],
     };
-  }, [progress, days]);
+  }, [records, days]);
+
+  if (loading) {
+    return (
+      <Card className="p-6 text-center">
+        <div className="h-8 w-8 rounded-full border-2 border-border border-t-primary animate-spin mx-auto" />
+      </Card>
+    );
+  }
 
   if (!chartData) {
     return (

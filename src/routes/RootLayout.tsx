@@ -2,6 +2,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { AnimatePresence, motion } from 'framer-motion';
 import MobileNav from '../components/MobileNav';
+import Logo from '../components/Logo';
 
 export default function RootLayout() {
   const { user, signOut } = useAuth();
@@ -14,9 +15,10 @@ export default function RootLayout() {
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 sm:px-6">
           <button
             onClick={() => navigate('/')}
-            className="text-lg font-bold text-text hover:text-primary transition-colors"
+            className="flex items-center gap-2 text-text hover:text-primary transition-colors"
           >
-            Listening Trainer
+            <Logo size={28} />
+            <span className="text-lg font-bold">Listening Trainer</span>
           </button>
 
           {user && (
@@ -28,6 +30,12 @@ export default function RootLayout() {
                 History
               </button>
               <button
+                onClick={() => navigate('/word-bank')}
+                className="rounded-lg px-3 py-1.5 text-sm text-text-secondary hover:text-text hover:bg-bg-alt transition-all"
+              >
+                Word Bank
+              </button>
+              <button
                 onClick={() => navigate('/settings')}
                 className="rounded-lg px-3 py-1.5 text-sm text-text-secondary hover:text-text hover:bg-bg-alt transition-all"
               >
@@ -35,7 +43,7 @@ export default function RootLayout() {
               </button>
               <span className="hidden text-sm text-text-secondary sm:inline">{user.email}</span>
               <button
-                onClick={signOut}
+                onClick={() => { signOut(); navigate('/auth', { replace: true }); }}
                 className="rounded-lg px-3 py-1.5 text-sm text-text-secondary hover:text-text hover:bg-bg-alt transition-all"
               >
                 Sign out

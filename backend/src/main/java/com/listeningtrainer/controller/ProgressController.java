@@ -37,11 +37,17 @@ public class ProgressController {
     @GetMapping("/detail/{progressId}")
     public ResponseEntity<?> getProgressDetail(@AuthenticationPrincipal User user,
                                                @PathVariable Long progressId) {
-        PracticeDetailResponse detail = progressService.getProgressDetail(user.getId(), progressId);
-        if (detail == null) {
+        // Try new review API first
+        ReviewDetailResponse detail = progressService.getReviewDetail(user.getId(), progressId);
+        if (detail != null) {
+            return ResponseEntity.ok(detail);
+        }
+        // Fallback to old PracticeDetailResponse for backwards compat
+        PracticeDetailResponse oldDetail = progressService.getProgressDetail(user.getId(), progressId);
+        if (oldDetail == null) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(detail);
+        return ResponseEntity.ok(oldDetail);
     }
 
     @PostMapping

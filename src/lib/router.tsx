@@ -4,12 +4,13 @@ import RootLayout from '../routes/RootLayout';
 import AuthPage from '../routes/AuthPage';
 import HomePage from '../routes/HomePage';
 import LessonsPage from '../routes/LessonsPage';
+import LessonCreatePage from '../routes/LessonCreatePage';
 import PlayerPage from '../routes/PlayerPage';
-import CustomLessonPage from '../routes/CustomLessonPage';
 import HistoryPage from '../routes/HistoryPage';
-import LessonHistoryPage from '../routes/LessonHistoryPage';
 import HistoryDetailPage from '../routes/HistoryDetailPage';
+import ReviewPage from '../routes/ReviewPage';
 import SettingsPage from '../routes/SettingsPage';
+import WordBankPage from '../routes/WordBankPage';
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -36,14 +37,26 @@ export function createAppRouter() {
   return createBrowserRouter([
     {
       path: '/',
-      element: <RootLayout />,
+      element: (
+        <AuthGuard>
+          <RootLayout />
+        </AuthGuard>
+      ),
       children: [
         { index: true, element: <HomePage /> },
         {
-          path: 'lessons/:difficulty',
+          path: 'lessons',
           element: (
             <AuthGuard>
               <LessonsPage />
+            </AuthGuard>
+          ),
+        },
+        {
+          path: 'lessons/new',
+          element: (
+            <AuthGuard>
+              <LessonCreatePage />
             </AuthGuard>
           ),
         },
@@ -56,14 +69,6 @@ export function createAppRouter() {
           ),
         },
         {
-          path: 'custom',
-          element: (
-            <AuthGuard>
-              <CustomLessonPage />
-            </AuthGuard>
-          ),
-        },
-        {
           path: 'history',
           element: (
             <AuthGuard>
@@ -72,18 +77,26 @@ export function createAppRouter() {
           ),
         },
         {
-          path: 'history/:lessonId',
+          path: 'history/:recordId',
           element: (
             <AuthGuard>
-              <LessonHistoryPage />
+              <HistoryDetailPage />
             </AuthGuard>
           ),
         },
         {
-          path: 'history/detail/:id',
+          path: 'history/:recordId/review',
           element: (
             <AuthGuard>
-              <HistoryDetailPage />
+              <ReviewPage />
+            </AuthGuard>
+          ),
+        },
+        {
+          path: 'word-bank',
+          element: (
+            <AuthGuard>
+              <WordBankPage />
             </AuthGuard>
           ),
         },
